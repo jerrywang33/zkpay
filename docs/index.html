@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>zkpay docs</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #08131f;
+        --muted: #5a6876;
+        --line: rgba(8, 19, 31, 0.12);
+        --blue: #0878c9;
+        --green: #0d9b72;
+        --paper: #f8fafb;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: #ffffff;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .shell {
+        width: min(1040px, calc(100vw - 40px));
+        margin: 0 auto;
+      }
+
+      header {
+        min-height: 76px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        font-size: 18px;
+        font-weight: 850;
+      }
+
+      .nav {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        color: var(--muted);
+        font-size: 14px;
+        font-weight: 760;
+      }
+
+      main {
+        padding: 72px 0 96px;
+      }
+
+      .eyebrow {
+        margin: 0 0 16px;
+        color: var(--blue);
+        font-size: 13px;
+        font-weight: 850;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        max-width: 760px;
+        margin: 0 0 24px;
+        font-size: 64px;
+        line-height: 0.98;
+        letter-spacing: 0;
+      }
+
+      .lede {
+        max-width: 720px;
+        margin: 0 0 48px;
+        color: var(--muted);
+        font-size: 19px;
+        line-height: 1.58;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 260px minmax(0, 1fr);
+        gap: 56px;
+        align-items: start;
+      }
+
+      aside {
+        position: sticky;
+        top: 24px;
+        border-left: 3px solid var(--blue);
+        display: grid;
+        gap: 14px;
+        padding-left: 18px;
+        color: var(--muted);
+        font-size: 14px;
+        font-weight: 760;
+      }
+
+      section {
+        border-top: 1px solid var(--line);
+        padding: 34px 0;
+      }
+
+      h2 {
+        margin: 0 0 14px;
+        font-size: 30px;
+        line-height: 1.12;
+      }
+
+      p,
+      li {
+        color: var(--muted);
+        line-height: 1.62;
+      }
+
+      code,
+      pre {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          monospace;
+      }
+
+      pre {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        margin: 18px 0 0;
+        padding: 18px;
+        background: var(--paper);
+        color: var(--ink);
+        line-height: 1.58;
+      }
+
+      .pill {
+        display: inline-flex;
+        border: 1px solid rgba(13, 155, 114, 0.26);
+        border-radius: 999px;
+        padding: 7px 12px;
+        color: var(--green);
+        background: #e6f7ef;
+        font-size: 13px;
+        font-weight: 850;
+      }
+
+      @media (max-width: 760px) {
+        .shell {
+          width: min(100vw - 28px, 1040px);
+        }
+
+        header {
+          align-items: flex-start;
+          flex-direction: column;
+          justify-content: center;
+          padding: 18px 0;
+        }
+
+        main {
+          padding-top: 44px;
+        }
+
+        h1 {
+          font-size: 42px;
+        }
+
+        .grid {
+          grid-template-columns: 1fr;
+        }
+
+        aside {
+          position: static;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header>
+        <a class="brand" href="https://zkpay.sh" aria-label="zkpay home">
+          <span aria-hidden="true">💧</span>
+          <span>zkpay</span>
+        </a>
+        <nav class="nav" aria-label="Docs navigation">
+          <a href="https://zkpay.sh">Website</a>
+          <a href="https://github.com/jerrywang33/zkpay">GitHub</a>
+          <a href="https://x.com/jerrydev90">X</a>
+        </nav>
+      </header>
+
+      <main>
+        <p class="eyebrow">zkpay docs</p>
+        <h1>Stablecoin checkout infrastructure for Sui apps.</h1>
+        <p class="lede">
+          zkpay turns payment links, zkLogin checkout, gas routing, and
+          verifiable receipts into one integration surface for Sui builders.
+          This docs site will track the product API as implementation begins.
+        </p>
+
+        <div class="grid">
+          <aside>
+            <a href="#quickstart">Quickstart</a>
+            <a href="#model">Payment model</a>
+            <a href="#gas">Gas policy</a>
+            <a href="#verify">Receipt verification</a>
+          </aside>
+
+          <article>
+            <section id="quickstart">
+              <span class="pill">MVP surface</span>
+              <h2>Quickstart</h2>
+              <p>
+                The first developer loop is intentionally small: create a
+                payment intent, send the payer to checkout, then verify the
+                receipt before fulfillment.
+              </p>
+              <pre><code>zkpay link create
+  --amount 20
+  --coin USDC
+  --receiver 0x...
+  --label "API credits"</code></pre>
+            </section>
+
+            <section id="model">
+              <h2>Payment model</h2>
+              <p>
+                A zkpay payment should carry amount, coin type, receiver,
+                expiry, nonce, and merchant metadata. Checkout builds the Sui
+                transaction and asks the payer to authorize the exact payment.
+              </p>
+            </section>
+
+            <section id="gas">
+              <h2>Gas policy</h2>
+              <p>
+                zkpay should use Sui gasless stablecoin transfers when the route
+                is eligible. Checkout logic that needs extra programmable
+                transaction work can use sponsored gas. Unsupported paths should
+                return an explicit fallback reason.
+              </p>
+            </section>
+
+            <section id="verify">
+              <h2>Receipt verification</h2>
+              <p>
+                Merchant systems should verify digest, receiver, amount, coin
+                type, nonce, and receipt status before marking an order paid.
+              </p>
+              <pre><code>const receipt = await zkpay.verifyPayment("zkp_123");
+
+if (receipt.status === "succeeded") {
+  await fulfillOrder(receipt.orderId);
+}</code></pre>
+            </section>
+          </article>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

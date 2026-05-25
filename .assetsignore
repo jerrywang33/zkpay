@@ -1,0 +1,7 @@
+outputs/
+.wrangler/
+node_modules/
+.DS_Store
+.git/
+*.pdf
+*.pptx

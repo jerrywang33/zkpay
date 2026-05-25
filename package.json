@@ -1,0 +1,10 @@
+{
+  "name": "zkpay-sh-site",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "check": "node --check app.js",
+    "dev": "python3 -m http.server 5175",
+    "deploy": "node scripts/deploy.mjs"
+  }
+}
