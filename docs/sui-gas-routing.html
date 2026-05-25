@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sui Gas Routing - zkpay docs</title>
+    <meta name="description" content="Route order and policy for gasless stablecoin transfers, sponsor fallback, and payer-paid fallback." />
+    <link rel="stylesheet" href="docs.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header>
+        <a class="brand" href="index.html" aria-label="zkpay docs home">
+          <span aria-hidden="true">💧</span>
+          <span>zkpay docs</span>
+        </a>
+        <nav class="nav" aria-label="Docs navigation">
+          <a href="index.html">Docs</a>
+          <a href="https://zkpay.sh">Website</a>
+          <a href="https://github.com/jerrywang33/zkpay">GitHub</a>
+          <a href="https://x.com/jerrydev90">X</a>
+        </nav>
+      </header>
+
+      <main>
+        <p class="eyebrow">zkpay docs</p>
+        <h1>Sui Gas Routing</h1>
+        <p class="lede">Route order and policy for gasless stablecoin transfers, sponsor fallback, and payer-paid fallback.</p>
+        <div class="docs-layout">
+          <aside class="side-nav">
+            <a href="index.html">Overview</a>
+            <a href="v0.1.html">v0.1</a>
+            <a href="api.html">API</a>
+            <a href="architecture.html">Architecture</a>
+            <a href="zklogin.html">zkLogin</a>
+            <a href="sui-gas-routing.html" aria-current="page">Gas routing</a>
+            <a href="roadmap.html">Roadmap</a>
+            <a href="decisions/0001-model-first.html">ADR 0001</a>
+          </aside>
+          <article class="doc-body">
+            <section><p>zkpay treats gasless payment as a route decision.</p></section>
+<section><h2>Route Order</h2>
+<pre><code class="language-txt">1. Eligible gasless stablecoin transfer
+2. Sponsored transaction fallback
+3. Payer-paid fallback</code></pre>
+</section><section><h2>Supported Gasless Stablecoin Symbols</h2>
+<p>The v0.1 model tracks the stablecoin set announced for Sui gasless stablecoin transfers:</p>
+<pre><code class="language-txt">USDsui, SuiUSDe, AUSD, FDUSD, USDB, USDC, USDY</code></pre>
+<p>This list should be treated as product policy, not hard protocol truth. Runtime eligibility should eventually be checked against Sui network capabilities and coin type allowlists.</p>
+</section><section><h2>Product Rule</h2>
+<p>Do not call every path gasless.</p>
+<p>If checkout requires programmable transaction logic, receipt creation, swap, deposit, or another extra operation, zkpay should either sponsor gas or explain why payer-paid fallback is required.</p></section>
+          </article>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

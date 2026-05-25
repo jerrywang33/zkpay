@@ -9,13 +9,17 @@
   ],
   "scripts": {
     "check": "npm run check:site && npm run typecheck && npm run test",
-    "check:site": "node --check app.js && node --check scripts/deploy.mjs",
+    "check:site": "node --check app.js && node --check scripts/deploy.mjs && node --check scripts/dev-server.mjs && node --check scripts/build-docs.mjs && npm run docs:build && node scripts/check-docs.mjs",
+    "docs:build": "node scripts/build-docs.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "dev": "python3 -m http.server 5175",
+    "example:merchant": "node examples/merchant-demo/index.ts",
+    "cli:demo": "node packages/cli/src/index.ts link create --amount 20 --coin USDC --receiver 0x84f --label \"API credits\" --order-id ord_123 --json",
+    "dev": "node scripts/dev-server.mjs",
     "deploy": "node scripts/deploy.mjs"
   },
   "dependencies": {
+    "hono": "^4.12.23",
     "zod": "^3.25.0"
   },
   "devDependencies": {

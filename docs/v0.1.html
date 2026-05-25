@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>v0.1 Product Contract - zkpay docs</title>
+    <meta name="description" content="The first zkpay payment model: intent, checkout, gas route, and receipt verification." />
+    <link rel="stylesheet" href="docs.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header>
+        <a class="brand" href="index.html" aria-label="zkpay docs home">
+          <span aria-hidden="true">💧</span>
+          <span>zkpay docs</span>
+        </a>
+        <nav class="nav" aria-label="Docs navigation">
+          <a href="index.html">Docs</a>
+          <a href="https://zkpay.sh">Website</a>
+          <a href="https://github.com/jerrywang33/zkpay">GitHub</a>
+          <a href="https://x.com/jerrydev90">X</a>
+        </nav>
+      </header>
+
+      <main>
+        <p class="eyebrow">zkpay docs</p>
+        <h1>v0.1 Product Contract</h1>
+        <p class="lede">The first zkpay payment model: intent, checkout, gas route, and receipt verification.</p>
+        <div class="docs-layout">
+          <aside class="side-nav">
+            <a href="index.html">Overview</a>
+            <a href="v0.1.html" aria-current="page">v0.1</a>
+            <a href="api.html">API</a>
+            <a href="architecture.html">Architecture</a>
+            <a href="zklogin.html">zkLogin</a>
+            <a href="sui-gas-routing.html">Gas routing</a>
+            <a href="roadmap.html">Roadmap</a>
+            <a href="decisions/0001-model-first.html">ADR 0001</a>
+          </aside>
+          <article class="doc-body">
+            <section><p><code>zkpay</code> starts as a narrow checkout layer for Sui apps:</p>
+<pre><code class="language-txt">PaymentIntent -&gt; Checkout Authorization -&gt; Gas Route -&gt; Settlement Receipt</code></pre>
+<p>The first useful version is complete when a merchant can create a stablecoin payment link, a payer can authorize the payment, and the merchant backend can verify the receipt before fulfillment.</p>
+<p>The current implementation covers the model, SDK, CLI, API boundary, generated checkout URL, and hosted checkout shell. Real Sui transaction building and zkLogin proof execution remain the next integration layer.</p></section>
+<section><h2>PaymentIntent</h2>
+<p>A <code>PaymentIntent</code> is the contract between merchant UI, hosted checkout, and backend verification.</p>
+<p>Required fields:</p>
+<ul>
+<li><code>id</code>: zkpay payment id, formatted as <code>zkp_*</code>.</li>
+<li><code>amount</code>: positive decimal string, never a floating point number.</li>
+<li><code>coin</code>: stablecoin symbol or coin type.</li>
+<li><code>receiver</code>: Sui receiver address.</li>
+<li><code>label</code>: human-readable payment label.</li>
+<li><code>metadata</code>: merchant-owned key/value strings.</li>
+<li><code>nonce</code>: unique replay-protection value.</li>
+<li><code>createdAt</code>: ISO timestamp.</li>
+<li><code>expiresAt</code>: optional ISO timestamp.</li>
+</ul>
+</section><section><h2>Gas Route Policy</h2>
+<p><code>gasless</code> is a route decision, not a blanket promise.</p>
+<table><thead><tr><th>Route</th><th>Payer gas</th><th>Condition</th></tr></thead><tbody><tr><td><code>gasless-stablecoin</code></td><td>zero</td><td>Supported stablecoin transfer with no extra checkout logic.</td></tr>
+<tr><td><code>sponsored</code></td><td>sponsored by merchant/app</td><td>Checkout needs receipt or programmable transaction logic.</td></tr>
+<tr><td><code>payer-paid</code></td><td>paid by payer</td><td>Unsupported route and no sponsor policy is available.</td></tr></tbody></table>
+<p>Supported gasless stablecoin symbols tracked by the first model:</p>
+<pre><code class="language-txt">USDsui, SuiUSDe, AUSD, FDUSD, USDB, USDC, USDY</code></pre>
+</section><section><h2>Receipt Verification</h2>
+<p>Merchant fulfillment must verify:</p>
+<ul>
+<li>receipt status is <code>succeeded</code>;</li>
+<li>receipt <code>paymentId</code> matches the intent;</li>
+<li>amount matches exactly;</li>
+<li>coin matches exactly;</li>
+<li>receiver matches exactly;</li>
+<li>nonce matches exactly;</li>
+<li>transaction digest is present.</li>
+</ul>
+<p>The MVP verifier is deterministic and local. Later versions can add Sui RPC lookups, event verification, webhook signatures, and Payment Kit receipt compatibility.</p>
+</section><section><h2>zkLogin Boundary</h2>
+<p>The first product model reserves the authorization step for zkLogin, but does not make zkLogin mandatory for v0.1. Wallet authorization can validate the payment loop first; zkLogin enters once checkout, gas route policy, and receipt verification are stable.</p></section>
+          </article>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

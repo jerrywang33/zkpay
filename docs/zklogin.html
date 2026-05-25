@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>zkLogin Boundary - zkpay docs</title>
+    <meta name="description" content="Where zkLogin fits in the checkout flow and where v0.1 deliberately stops." />
+    <link rel="stylesheet" href="docs.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header>
+        <a class="brand" href="index.html" aria-label="zkpay docs home">
+          <span aria-hidden="true">💧</span>
+          <span>zkpay docs</span>
+        </a>
+        <nav class="nav" aria-label="Docs navigation">
+          <a href="index.html">Docs</a>
+          <a href="https://zkpay.sh">Website</a>
+          <a href="https://github.com/jerrywang33/zkpay">GitHub</a>
+          <a href="https://x.com/jerrydev90">X</a>
+        </nav>
+      </header>
+
+      <main>
+        <p class="eyebrow">zkpay docs</p>
+        <h1>zkLogin Boundary</h1>
+        <p class="lede">Where zkLogin fits in the checkout flow and where v0.1 deliberately stops.</p>
+        <div class="docs-layout">
+          <aside class="side-nav">
+            <a href="index.html">Overview</a>
+            <a href="v0.1.html">v0.1</a>
+            <a href="api.html">API</a>
+            <a href="architecture.html">Architecture</a>
+            <a href="zklogin.html" aria-current="page">zkLogin</a>
+            <a href="sui-gas-routing.html">Gas routing</a>
+            <a href="roadmap.html">Roadmap</a>
+            <a href="decisions/0001-model-first.html">ADR 0001</a>
+          </aside>
+          <article class="doc-body">
+            <section><p>zkLogin is the intended payer onboarding path for zkpay, but it should enter after the payment contract is stable.</p></section>
+<section><h2>Role in Checkout</h2>
+<p>zkLogin should handle account entry and transaction authorization:</p>
+<pre><code class="language-txt">OAuth identity -&gt; zkLogin address -&gt; authorize Sui transaction -&gt; settle payment</code></pre>
+<p>It should not change the merchant-facing contract. A merchant still creates a <code>PaymentIntent</code> and verifies a <code>PaymentReceipt</code>.</p>
+</section><section><h2>v0.1 Boundary</h2>
+<p>v0.1 can validate the loop with wallet authorization first:</p>
+<pre><code class="language-txt">PaymentIntent -&gt; wallet authorization -&gt; settlement digest -&gt; receipt verification</code></pre>
+<p>Once that loop is reliable, zkLogin can replace or augment the authorization step without changing gas route policy or receipt verification.</p>
+</section><section><h2>Open Questions</h2>
+<ul>
+<li>Which OAuth providers should be supported first?</li>
+<li>Should checkout show both zkLogin and wallet options by default?</li>
+<li>How should merchants communicate payer identity without storing unnecessary personal data?</li>
+<li>Which zkLogin proof flow belongs in hosted checkout versus merchant-hosted checkout?</li>
+</ul></section>
+          </article>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

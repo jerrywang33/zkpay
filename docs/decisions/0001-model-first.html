@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ADR 0001: Model First - zkpay docs</title>
+    <meta name="description" content="Why zkpay starts from the product contract instead of a wallet button." />
+    <link rel="stylesheet" href="../docs.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header>
+        <a class="brand" href="../index.html" aria-label="zkpay docs home">
+          <span aria-hidden="true">💧</span>
+          <span>zkpay docs</span>
+        </a>
+        <nav class="nav" aria-label="Docs navigation">
+          <a href="../index.html">Docs</a>
+          <a href="https://zkpay.sh">Website</a>
+          <a href="https://github.com/jerrywang33/zkpay">GitHub</a>
+          <a href="https://x.com/jerrydev90">X</a>
+        </nav>
+      </header>
+
+      <main>
+        <p class="eyebrow">zkpay docs</p>
+        <h1>ADR 0001: Model First</h1>
+        <p class="lede">Why zkpay starts from the product contract instead of a wallet button.</p>
+        <div class="docs-layout">
+          <aside class="side-nav">
+            <a href="../index.html">Overview</a>
+            <a href="../v0.1.html">v0.1</a>
+            <a href="../api.html">API</a>
+            <a href="../architecture.html">Architecture</a>
+            <a href="../zklogin.html">zkLogin</a>
+            <a href="../sui-gas-routing.html">Gas routing</a>
+            <a href="../roadmap.html">Roadmap</a>
+            <a href="0001-model-first.html" aria-current="page">ADR 0001</a>
+          </aside>
+          <article class="doc-body">
+            <section><p>Date: 2026-05-25</p></section>
+<section><h2>Decision</h2>
+<p>Build zkpay from the payment contract outward:</p>
+<pre><code class="language-txt">PaymentIntent -&gt; GasRouteDecision -&gt; PaymentReceipt -&gt; Verification</code></pre>
+</section><section><h2>Rationale</h2>
+<p>The product value is not a page or wallet button. It is a stable contract that apps can integrate without rebuilding checkout, gas policy, and receipt verification themselves.</p>
+<p>Starting with the model lets SDK, CLI, API, hosted checkout, and docs share the same source of truth.</p>
+</section><section><h2>Consequences</h2>
+<ul>
+<li>UI work should consume <code>@zkpay/sdk</code>.</li>
+<li>API work should wrap SDK behavior instead of duplicating core logic.</li>
+<li>zkLogin and Sui RPC integration should attach to existing intent and receipt contracts.</li>
+</ul></section>
+          </article>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

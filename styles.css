@@ -234,6 +234,7 @@ h3 {
 }
 
 .checkout-preview,
+.checkout-card,
 .proof-card,
 .capability-card,
 .code-panel,
@@ -336,6 +337,122 @@ h3 {
 .receipt-strip strong {
   font-size: 14px;
   text-transform: uppercase;
+}
+
+.checkout-page {
+  min-height: calc(100vh - 76px);
+  padding: 70px 0 96px;
+}
+
+.checkout-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.82fr) minmax(360px, 0.68fr);
+  align-items: start;
+  gap: 72px;
+}
+
+.checkout-copy {
+  padding-top: 26px;
+}
+
+.checkout-card {
+  min-width: 0;
+  padding: 30px;
+}
+
+.checkout-amount {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 24px;
+}
+
+.checkout-amount span,
+.checkout-detail-row span,
+.checkout-metadata span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.checkout-amount strong {
+  display: block;
+  margin-top: 10px;
+  color: var(--green);
+  font-size: 42px;
+  line-height: 1;
+}
+
+.checkout-detail-row,
+.checkout-metadata div {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid var(--line);
+  padding: 17px 0;
+}
+
+.checkout-detail-row strong,
+.checkout-metadata strong {
+  min-width: 0;
+  font-size: 14px;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.checkout-detail-row strong {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.checkout-metadata {
+  border-bottom: 1px solid var(--line);
+}
+
+.checkout-metadata div {
+  border-bottom: 0;
+  padding: 14px 0;
+}
+
+.checkout-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.checkout-actions button {
+  min-height: 46px;
+  border: 1px solid var(--ink);
+  border-radius: 6px;
+  color: var(--ink);
+  background: #ffffff;
+  font-size: 14px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.checkout-actions button:first-child {
+  color: #ffffff;
+  background: var(--ink);
+}
+
+.checkout-actions button:disabled {
+  border-color: var(--line-strong);
+  color: var(--muted);
+  background: var(--soft);
+  cursor: not-allowed;
+}
+
+.checkout-note {
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.checkout-empty {
+  max-width: 760px;
+  padding: 78px 0 110px;
 }
 
 .proof-section,
@@ -669,6 +786,7 @@ code {
 
 @media (max-width: 1080px) {
   .hero,
+  .checkout-layout,
   .split-section,
   .developer-section,
   .final-section {
@@ -751,6 +869,7 @@ code {
   }
 
   .checkout-preview,
+  .checkout-card,
   .proof-card,
   .capability-card,
   .usecase-grid article {
@@ -770,6 +889,41 @@ code {
 
   .policy-row span {
     width: fit-content;
+  }
+
+  .checkout-page {
+    padding-top: 36px;
+    padding-bottom: 70px;
+  }
+
+  .checkout-layout {
+    gap: 34px;
+  }
+
+  .checkout-copy {
+    padding-top: 0;
+  }
+
+  .checkout-amount strong {
+    font-size: 36px;
+  }
+
+  .checkout-detail-row,
+  .checkout-metadata div,
+  .checkout-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .checkout-detail-row,
+  .checkout-metadata div {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .checkout-detail-row strong,
+  .checkout-metadata strong {
+    text-align: left;
   }
 
   .footer {
