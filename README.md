@@ -1,33 +1,43 @@
-# zkpay.sh
+# zkpay
 
-Independent Sui-first website for `zkpay.sh`.
-
-```txt
 Sui-native stablecoin checkout infrastructure.
-```
-
-Product surface:
 
 ```txt
 Payment Links -> zkLogin Checkout -> Gas Routing -> Receipt Verification.
 ```
 
-The product deck is a positioning reference, not a page template. The homepage
-should translate that logic into a real product website:
+The public website lives at `https://zkpay.sh`. Product docs are intended to
+live at `https://jerrywang33.github.io/zkpay/`.
+
+## v0.1 Focus
+
+The first useful version should close one narrow payment loop:
 
 ```txt
-Hero value proposition
--> pain removed for payers, apps, and merchants
--> why Sui primitives make this possible
--> checkout flow
--> core capabilities
--> developer integration
--> clear gas policy
+merchant creates PaymentIntent
+-> payer opens checkout
+-> payer authorizes stablecoin payment
+-> zkpay resolves gas route
+-> merchant verifies receipt
+-> order becomes paid
+```
+
+zkLogin is part of the intended checkout path, but the first code milestone
+starts with the product contract: intent, route policy, and receipt verification.
+
+## Workspace
+
+```txt
+packages/core   PaymentIntent, GasRoutePolicy, ReceiptVerification
+packages/sdk    developer-facing client wrapper
+packages/cli    early zkpay command surface
+docs/           product and integration docs
 ```
 
 ## Local
 
 ```bash
+npm install
 npm run check
 npm run dev
 ```

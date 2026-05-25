@@ -1,0 +1,11 @@
+{
+  "name": "@zkpay/cli",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "zkpay": "./src/index.ts"
+  },
+  "dependencies": {
+    "@zkpay/sdk": "0.1.0"
+  }
+}

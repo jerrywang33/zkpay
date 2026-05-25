@@ -1,10 +1,26 @@
 {
-  "name": "zkpay-sh-site",
+  "name": "zkpay",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "scripts": {
-    "check": "node --check app.js",
+    "check": "npm run check:site && npm run typecheck && npm run test",
+    "check:site": "node --check app.js && node --check scripts/deploy.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
     "dev": "python3 -m http.server 5175",
     "deploy": "node scripts/deploy.mjs"
+  },
+  "dependencies": {
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.0.0"
   }
 }
