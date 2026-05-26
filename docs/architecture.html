@@ -30,6 +30,7 @@
           <aside class="side-nav">
             <a href="index.html">Overview</a>
             <a href="v0.1.html">v0.1</a>
+            <a href="v0.2.html">v0.2</a>
             <a href="api.html">API</a>
             <a href="architecture.html" aria-current="page">Architecture</a>
             <a href="zklogin.html">zkLogin</a>
@@ -43,9 +44,9 @@
 <pre><code class="language-txt">PaymentIntent -&gt; Authorization -&gt; GasRouteDecision -&gt; PaymentReceipt -&gt; Verification</code></pre></section>
 <section><h2>Packages</h2>
 <table><thead><tr><th>Package</th><th>Responsibility</th></tr></thead><tbody><tr><td><code>@zkpay/core</code></td><td>Schemas, payment URI, gas routing, receipt verification.</td></tr>
-<tr><td><code>@zkpay/sdk</code></td><td>Developer-facing client around core primitives.</td></tr>
-<tr><td><code>@zkpay/api</code></td><td>Hono HTTP boundary for payment creation and verification.</td></tr>
-<tr><td><code>@zkpay/cli</code></td><td>Early command surface for payment links and scripts.</td></tr>
+<tr><td><code>@zkpay/sdk</code></td><td>Developer-facing client around core primitives and Sui testnet settlement verification.</td></tr>
+<tr><td><code>@zkpay/api</code></td><td>Hono HTTP boundary for payment creation, local verification, and Sui receipt verification.</td></tr>
+<tr><td><code>@zkpay/cli</code></td><td>Payment link and Sui receipt verification command surface.</td></tr>
 <tr><td><code>zkpay-sh</code></td><td>Public npm package bundling the core, SDK, and CLI outputs.</td></tr></tbody></table>
 <p>Public consumers should install <code>zkpay-sh@next</code>. The scoped packages remain workspace boundaries until <code>@zkpay</code> npm scope access is available.</p>
 </section><section><h2>Surfaces</h2>
@@ -55,8 +56,9 @@
 <p>Presents amount, coin, receiver, and authorization route. It should not custody funds.</p>
 <h3>Sui network</h3>
 <p>Settles stablecoin transfers and provides transaction data for verification.</p>
+<p>The v0.2 verifier uses Sui RPC transaction effects and balance changes to check the digest, receiver, coin type, and atomic amount before a merchant fulfills the order.</p>
 </section><section><h2>Current Scope</h2>
-<p>v0.1 is model-first. It does not yet connect to Sui RPC, zkLogin proving, or Payment Kit receipt events. Those integrations should attach to the existing intent and receipt contracts rather than redefine them.</p></section>
+<p>v0.2 connects the SDK and API to Sui RPC for testnet receipt verification. zkLogin proving, webhook delivery, digest replay storage, and onchain payment-id binding remain the next integration layers.</p></section>
           </article>
         </div>
       </main>

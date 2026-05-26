@@ -30,6 +30,7 @@
           <aside class="side-nav">
             <a href="index.html">Overview</a>
             <a href="v0.1.html">v0.1</a>
+            <a href="v0.2.html">v0.2</a>
             <a href="api.html">API</a>
             <a href="architecture.html">Architecture</a>
             <a href="zklogin.html">zkLogin</a>
@@ -51,9 +52,18 @@
 </ul>
 </section><section><h2>v0.2: Sui Settlement Prototype</h2>
 <ul>
-<li>Wallet authorization path.</li>
-<li>Transaction digest capture.</li>
-<li>Receipt verification against Sui RPC.</li>
+<li>Wallet-submittable Sui transaction builder.</li>
+<li>Transaction digest capture from wallet execution.</li>
+<li>Receipt verification against Sui RPC balance changes.</li>
+<li><code>/payments/verify/sui</code> backend route.</li>
+<li>CLI receipt verification for demos and scripts.</li>
+</ul>
+</section><section><h2>v0.2 Next Hardening</h2>
+<ul>
+<li>Checkout wallet adapter integration.</li>
+<li>Merchant-side digest replay prevention.</li>
+<li>Onchain payment id or nonce binding through event, memo, or witness object.</li>
+<li>Gasless stablecoin eligibility checks from live network data.</li>
 </ul>
 </section><section><h2>v0.3: zkLogin Path</h2>
 <ul>

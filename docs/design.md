@@ -543,17 +543,18 @@ the current static marketing page.
 - create and parse payment requests;
 - validate amount, coin type, receiver, nonce, expiration;
 - produce Sui payment URI;
-- verify a payment by transaction digest;
+- verify local receipt fields against a payment intent;
 - no hosted custody;
 - no custom sponsor policy yet.
 
-### v0.2: Hosted Checkout
+### v0.2: Testnet Settlement Loop
 
 - hosted `/pay/:id` page;
-- wallet payment path;
-- success and failure states;
-- receipt display;
-- testnet deployment.
+- wallet-submittable Sui transaction builder;
+- Sui RPC receipt verification by digest, receiver, coin type, and amount;
+- `/payments/verify/sui` API route;
+- CLI receipt verification for demos and scripts;
+- merchant-side digest replay storage still required.
 
 ### v0.3: zkLogin Checkout
 

@@ -6,6 +6,10 @@ const [, , command, subcommand, ...args] = process.argv;
 try {
   if (command === "link" && subcommand === "create") {
     const values = parseFlags(args);
+    if (values.help === "true") {
+      printUsage();
+      process.exit(0);
+    }
     const client = new ZkpayClient({
       baseUrl: values["base-url"] ?? "https://zkpay.sh",
       sponsorEnabled: values.sponsor !== "false",
@@ -31,6 +35,40 @@ try {
     }
 
     process.exit(0);
+  }
+
+  if (command === "receipt" && subcommand === "verify-sui") {
+    const values = parseFlags(args);
+    if (values.help === "true") {
+      printUsage();
+      process.exit(0);
+    }
+    const client = new ZkpayClient({
+      baseUrl: values["base-url"] ?? "https://zkpay.sh",
+      sui: {
+        network: (values.network as "mainnet" | "testnet" | "devnet" | "localnet") ??
+          "testnet",
+        rpcUrl: values["rpc-url"],
+      },
+    });
+    const intent = parseIntent(values.intent);
+    const result = await client.verifySuiPayment({
+      intent,
+      txDigest: required(values["tx-digest"], "tx-digest"),
+      coinType: values["coin-type"],
+      decimals: values.decimals ? Number(values.decimals) : undefined,
+      expectedSender: values.sender,
+      amountPolicy: values["amount-policy"] === "at-least" ? "at-least" : "exact",
+      enforceExpiration: values["enforce-expiration"] === "true",
+    });
+
+    if (values.json === "true") {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      console.log(result.ok ? "verified" : `failed: ${result.errors.join(", ")}`);
+    }
+
+    process.exit(result.ok ? 0 : 1);
   }
 
   printUsage();
@@ -68,11 +106,22 @@ function required(value: string | undefined, name: string): string {
   return value;
 }
 
+function parseIntent(value: string | undefined) {
+  const raw = required(value, "intent");
+
+  if (raw.startsWith("http://") || raw.startsWith("https://")) {
+    return new ZkpayClient().parseCheckoutUrl(raw);
+  }
+
+  return JSON.parse(raw);
+}
+
 function printUsage(): void {
   console.error(
     [
       "Usage:",
       "  zkpay link create --amount 20 --coin USDC --receiver 0x...",
+      "  zkpay receipt verify-sui --intent '<json-or-checkout-url>' --tx-digest <digest> --coin-type <type> --decimals 6",
       "",
       "Options:",
       "  --label <text>        Payment label",
@@ -81,6 +130,10 @@ function printUsage(): void {
       "  --expires-at <iso>    Optional expiry timestamp",
       "  --ptb                Mark checkout as programmable transaction",
       "  --sponsor false      Disable sponsor fallback",
+      "  --network <name>      Sui network for receipt verification",
+      "  --rpc-url <url>       Override Sui RPC URL",
+      "  --sender <address>    Expected payer address",
+      "  --amount-policy <x>   exact or at-least",
       "  --json               Print full payment object",
     ].join("\n"),
   );

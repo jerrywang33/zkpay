@@ -12,9 +12,18 @@
 
 ## v0.2: Sui Settlement Prototype
 
-- Wallet authorization path.
-- Transaction digest capture.
-- Receipt verification against Sui RPC.
+- Wallet-submittable Sui transaction builder.
+- Transaction digest capture from wallet execution.
+- Receipt verification against Sui RPC balance changes.
+- `/payments/verify/sui` backend route.
+- CLI receipt verification for demos and scripts.
+
+## v0.2 Next Hardening
+
+- Checkout wallet adapter integration.
+- Merchant-side digest replay prevention.
+- Onchain payment id or nonce binding through event, memo, or witness object.
+- Gasless stablecoin eligibility checks from live network data.
 
 ## v0.3: zkLogin Path
 

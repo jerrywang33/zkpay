@@ -11,9 +11,9 @@ PaymentIntent -> Authorization -> GasRouteDecision -> PaymentReceipt -> Verifica
 | Package | Responsibility |
 | --- | --- |
 | `@zkpay/core` | Schemas, payment URI, gas routing, receipt verification. |
-| `@zkpay/sdk` | Developer-facing client around core primitives. |
-| `@zkpay/api` | Hono HTTP boundary for payment creation and verification. |
-| `@zkpay/cli` | Early command surface for payment links and scripts. |
+| `@zkpay/sdk` | Developer-facing client around core primitives and Sui testnet settlement verification. |
+| `@zkpay/api` | Hono HTTP boundary for payment creation, local verification, and Sui receipt verification. |
+| `@zkpay/cli` | Payment link and Sui receipt verification command surface. |
 | `zkpay-sh` | Public npm package bundling the core, SDK, and CLI outputs. |
 
 Public consumers should install `zkpay-sh@next`. The scoped packages remain
@@ -35,8 +35,12 @@ funds.
 
 Settles stablecoin transfers and provides transaction data for verification.
 
+The v0.2 verifier uses Sui RPC transaction effects and balance changes to check
+the digest, receiver, coin type, and atomic amount before a merchant fulfills
+the order.
+
 ## Current Scope
 
-v0.1 is model-first. It does not yet connect to Sui RPC, zkLogin proving, or
-Payment Kit receipt events. Those integrations should attach to the existing
-intent and receipt contracts rather than redefine them.
+v0.2 connects the SDK and API to Sui RPC for testnet receipt verification.
+zkLogin proving, webhook delivery, digest replay storage, and onchain
+payment-id binding remain the next integration layers.

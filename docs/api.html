@@ -30,6 +30,7 @@
           <aside class="side-nav">
             <a href="index.html">Overview</a>
             <a href="v0.1.html">v0.1</a>
+            <a href="v0.2.html">v0.2</a>
             <a href="api.html" aria-current="page">API</a>
             <a href="architecture.html">Architecture</a>
             <a href="zklogin.html">zkLogin</a>
@@ -101,7 +102,37 @@
   &quot;ok&quot;: true,
   &quot;errors&quot;: []
 }</code></pre>
-<p>The API does not custody funds and does not mark merchant orders paid by itself. Merchant systems should call verification before fulfillment.</p></section>
+<p>The API does not custody funds and does not mark merchant orders paid by itself. Merchant systems should call verification before fulfillment.</p>
+</section><section><h2>Verify Sui Settlement</h2>
+<pre><code class="language-txt">POST /payments/verify/sui</code></pre>
+<p>Request:</p>
+<pre><code class="language-json">{
+  &quot;intent&quot;: {},
+  &quot;txDigest&quot;: &quot;H2j...&quot;,
+  &quot;coinType&quot;: &quot;0x...::usdc::USDC&quot;,
+  &quot;decimals&quot;: 6,
+  &quot;expectedSender&quot;: &quot;0x...&quot;,
+  &quot;amountPolicy&quot;: &quot;exact&quot;,
+  &quot;options&quot;: {
+    &quot;enforceExpiration&quot;: true
+  }
+}</code></pre>
+<p>Response:</p>
+<pre><code class="language-json">{
+  &quot;ok&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;receipt&quot;: {
+    &quot;paymentId&quot;: &quot;zkp_...&quot;,
+    &quot;status&quot;: &quot;succeeded&quot;,
+    &quot;txDigest&quot;: &quot;H2j...&quot;,
+    &quot;amount&quot;: &quot;20&quot;,
+    &quot;coin&quot;: &quot;USDC&quot;,
+    &quot;receiver&quot;: &quot;0x...&quot;,
+    &quot;nonce&quot;: &quot;...&quot;,
+    &quot;settledAt&quot;: &quot;2026-05-25T01:00:00.000Z&quot;
+  }
+}</code></pre>
+<p>The Sui route verifies transaction effects and balance changes through RPC. It does not yet prove the zkpay nonce was written onchain, so merchant systems must store transaction digests and reject reuse.</p></section>
           </article>
         </div>
       </main>

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>v0.2 Testnet Settlement Loop - zkpay docs</title>
+    <meta name="description" content="Build a Sui testnet payment transaction and verify the resulting digest before fulfillment." />
+    <link rel="stylesheet" href="docs.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header>
+        <a class="brand" href="index.html" aria-label="zkpay docs home">
+          <span aria-hidden="true">💧</span>
+          <span>zkpay docs</span>
+        </a>
+        <nav class="nav" aria-label="Docs navigation">
+          <a href="index.html">Docs</a>
+          <a href="https://zkpay.sh">Website</a>
+          <a href="https://github.com/jerrywang33/zkpay">GitHub</a>
+          <a href="https://x.com/jerrydev90">X</a>
+        </nav>
+      </header>
+
+      <main>
+        <p class="eyebrow">zkpay docs</p>
+        <h1>v0.2 Testnet Settlement Loop</h1>
+        <p class="lede">Build a Sui testnet payment transaction and verify the resulting digest before fulfillment.</p>
+        <div class="docs-layout">
+          <aside class="side-nav">
+            <a href="index.html">Overview</a>
+            <a href="v0.1.html">v0.1</a>
+            <a href="v0.2.html" aria-current="page">v0.2</a>
+            <a href="api.html">API</a>
+            <a href="architecture.html">Architecture</a>
+            <a href="zklogin.html">zkLogin</a>
+            <a href="sui-gas-routing.html">Gas routing</a>
+            <a href="npm-release.html">npm release</a>
+            <a href="roadmap.html">Roadmap</a>
+            <a href="decisions/0001-model-first.html">ADR 0001</a>
+          </aside>
+          <article class="doc-body">
+            <section><p>v0.2 moves zkpay from a model-only alpha toward a real Sui testnet payment loop:</p>
+<pre><code class="language-txt">PaymentIntent -&gt; wallet transaction -&gt; Sui testnet digest -&gt; RPC receipt verification</code></pre>
+<p>The goal is narrow: a merchant can create a payment, a payer can submit a Sui stablecoin transfer, and the merchant can verify the transaction before fulfillment.</p></section>
+<section><h2>SDK Surface</h2>
+<p>Install the public alpha package:</p>
+<pre><code class="language-bash">npm install zkpay-sh@next</code></pre>
+<p>Build a wallet-submittable Sui transfer transaction:</p>
+<pre><code class="language-ts">import { ZkpayClient } from &quot;zkpay-sh&quot;;
+
+const zkpay = new ZkpayClient();
+const payment = zkpay.createPayment({
+  amount: &quot;20&quot;,
+  coin: &quot;USDC&quot;,
+  receiver: &quot;0x...&quot;,
+  label: &quot;API credits&quot;
+});
+
+const { transaction, amountAtomic } = zkpay.buildSuiPaymentTransaction({
+  intent: payment.intent,
+  payer: &quot;0x...&quot;,
+  coinType: &quot;0x...::usdc::USDC&quot;,
+  decimals: 6
+});</code></pre>
+<p>The returned <code>transaction</code> is a Sui TypeScript SDK <code>Transaction</code> that a wallet adapter can sign and execute on testnet.</p>
+</section><section><h2>Receipt Verification</h2>
+<p>After the wallet returns a transaction digest, verify it through Sui RPC:</p>
+<pre><code class="language-ts">const result = await zkpay.verifySuiPayment({
+  intent: payment.intent,
+  txDigest: &quot;H2j...&quot;,
+  coinType: &quot;0x...::usdc::USDC&quot;,
+  expectedSender: &quot;0x...&quot;
+});
+
+if (!result.ok) {
+  throw new Error(result.errors.join(&quot;, &quot;));
+}</code></pre>
+<p>The verifier checks:</p>
+<ul>
+<li>transaction exists on Sui RPC;</li>
+<li>transaction effects succeeded;</li>
+<li>receiver gained the expected coin type;</li>
+<li>receiver amount matches the payment intent after decimal conversion;</li>
+<li>optional sender address had the corresponding debit;</li>
+<li>generated receipt still passes local intent verification.</li>
+</ul>
+</section><section><h2>API Boundary</h2>
+<p>The Hono API exposes a Sui verification route for merchant backends:</p>
+<pre><code class="language-txt">POST /payments/verify/sui</code></pre>
+<p>Request shape:</p>
+<pre><code class="language-json">{
+  &quot;intent&quot;: {},
+  &quot;txDigest&quot;: &quot;H2j...&quot;,
+  &quot;coinType&quot;: &quot;0x...::usdc::USDC&quot;,
+  &quot;decimals&quot;: 6,
+  &quot;expectedSender&quot;: &quot;0x...&quot;
+}</code></pre>
+<p>The response includes <code>ok</code>, <code>errors</code>, a generated <code>receipt</code>, local verification details, transaction deltas, and warnings.</p>
+</section><section><h2>CLI</h2>
+<p>The CLI can verify a testnet receipt from a checkout URL or serialized intent:</p>
+<pre><code class="language-bash">zkpay receipt verify-sui \
+  --intent &#039;&lt;checkout-url-or-json-intent&gt;&#039; \
+  --tx-digest H2j... \
+  --coin-type 0x...::usdc::USDC \
+  --decimals 6 \
+  --network testnet \
+  --json</code></pre>
+</section><section><h2>Current Boundary</h2>
+<p>v0.2 verifies settlement by digest, receiver, coin type, and amount. The payment nonce is still merchant-side state, not an onchain memo or event. Merchants must store transaction digests and reject reuse before fulfillment. A later version should bind the zkpay payment id or nonce onchain through a memo/event/witness contract.</p></section>
+          </article>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

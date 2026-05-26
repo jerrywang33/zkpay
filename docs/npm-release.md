@@ -18,6 +18,9 @@ npm install zkpay-sh@next
 npm install -g zkpay-sh@next
 ```
 
+Node 22 or newer is recommended because `zkpay-sh` now includes the Sui
+TypeScript SDK for transaction building and receipt verification.
+
 ```txt
 zkpay-sh       main SDK export
 zkpay-sh/core  core payment model and verification primitives
@@ -31,15 +34,15 @@ publish target.
 
 ## Versioning
 
-The first alpha version is:
+The current alpha version is:
 
 ```txt
-0.1.0-alpha.0
+0.2.0-alpha.1
 ```
 
-It is published under the `next` dist-tag. Because `zkpay-sh` starts with only
-one public version, npm may also point `latest` at the same alpha until a stable
-release exists. Developer docs should still use `zkpay-sh@next`.
+It is published under the `next` dist-tag. Developer docs should use
+`zkpay-sh@next`; `latest` is not the integration target while the package is in
+alpha.
 
 ## Local Release Flow
 

@@ -1,6 +1,14 @@
 # @zkpay/api
 
-Hono API boundary for zkpay payment creation and receipt verification.
+Hono API boundary for zkpay payment creation, local receipt verification, and
+Sui settlement verification.
 
-This package is part of the workspace build, but the first public alpha release
-focuses on `@zkpay/core`, `@zkpay/sdk`, and `@zkpay/cli`.
+```txt
+GET  /health
+POST /payments
+POST /payments/verify
+POST /payments/verify/sui
+```
+
+This package is part of the workspace build. Public installs currently use the
+bundled `zkpay-sh` package until `@zkpay` npm scope access is available.

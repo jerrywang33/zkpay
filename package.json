@@ -1,6 +1,6 @@
 {
   "name": "zkpay",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -8,7 +8,7 @@
     "apps/*"
   ],
   "scripts": {
-    "check": "npm run check:site && npm run typecheck && npm run build && npm run test",
+    "check": "npm run check:site && npm run build && npm run typecheck && npm run test",
     "check:site": "node --check app.js && node --check scripts/deploy.mjs && node --check scripts/dev-server.mjs && node --check scripts/build-docs.mjs && node --check scripts/build-packages.mjs && node --check scripts/build-public-package.mjs && node --check scripts/publish-alpha.mjs && npm run docs:build && node scripts/check-docs.mjs",
     "docs:build": "node scripts/build-docs.mjs",
     "build": "node scripts/build-packages.mjs",

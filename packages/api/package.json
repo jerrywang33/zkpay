@@ -1,6 +1,6 @@
 {
   "name": "@zkpay/api",
-  "version": "0.1.0-alpha.0",
+  "version": "0.2.0-alpha.1",
   "description": "Hono API boundary for zkpay payment creation and receipt verification.",
   "type": "module",
   "license": "MIT",
@@ -32,7 +32,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@zkpay/sdk": "0.1.0-alpha.0",
+    "@zkpay/sdk": "0.2.0-alpha.1",
     "hono": "^4.12.23"
   }
 }

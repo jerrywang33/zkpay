@@ -9,6 +9,12 @@ const pages = [
     description: "The first zkpay payment model: intent, checkout, gas route, and receipt verification.",
   },
   {
+    input: "docs/v0.2.md",
+    output: "docs/v0.2.html",
+    title: "v0.2 Testnet Settlement Loop",
+    description: "Build a Sui testnet payment transaction and verify the resulting digest before fulfillment.",
+  },
+  {
     input: "docs/api.md",
     output: "docs/api.html",
     title: "API Reference",
@@ -113,6 +119,7 @@ function renderSideNav(currentOutput) {
   const links = [
     ["Overview", "docs/index.html"],
     ["v0.1", "docs/v0.1.html"],
+    ["v0.2", "docs/v0.2.html"],
     ["API", "docs/api.html"],
     ["Architecture", "docs/architecture.html"],
     ["zkLogin", "docs/zklogin.html"],

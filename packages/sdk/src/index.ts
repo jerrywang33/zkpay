@@ -14,10 +14,20 @@ import {
   type ReceiptVerificationOptions,
   type ReceiptVerificationResult,
 } from "@zkpay/core";
+import {
+  SuiReceiptVerifier,
+  buildSuiPaymentTransaction,
+  type BuildSuiPaymentTransactionInput,
+  type BuiltSuiPaymentTransaction,
+  type SuiReceiptVerifierOptions,
+  type SuiSettlementVerificationInput,
+  type SuiSettlementVerificationResult,
+} from "./sui.js";
 
 export interface ZkpayClientOptions {
   baseUrl?: string;
   sponsorEnabled?: boolean;
+  sui?: SuiReceiptVerifierOptions;
 }
 
 export interface CreatePaymentOptions extends CreatePaymentIntentOptions {
@@ -34,10 +44,12 @@ export interface CreatedPayment {
 export class ZkpayClient {
   private readonly baseUrl: string;
   private readonly sponsorEnabled: boolean;
+  private readonly sui?: SuiReceiptVerifierOptions;
 
   constructor(options: ZkpayClientOptions = {}) {
     this.baseUrl = options.baseUrl ?? "https://zkpay.sh";
     this.sponsorEnabled = options.sponsorEnabled ?? true;
+    this.sui = options.sui;
   }
 
   createPayment(
@@ -74,6 +86,18 @@ export class ZkpayClient {
   ): ReceiptVerificationResult {
     return verifyPaymentReceipt(intent, receipt, options);
   }
+
+  buildSuiPaymentTransaction(
+    input: BuildSuiPaymentTransactionInput,
+  ): BuiltSuiPaymentTransaction {
+    return buildSuiPaymentTransaction(input);
+  }
+
+  verifySuiPayment(
+    input: SuiSettlementVerificationInput,
+  ): Promise<SuiSettlementVerificationResult> {
+    return new SuiReceiptVerifier(this.sui).verify(input);
+  }
 }
 
 export function createZkpayClient(
@@ -83,3 +107,4 @@ export function createZkpayClient(
 }
 
 export * from "@zkpay/core";
+export * from "./sui.js";

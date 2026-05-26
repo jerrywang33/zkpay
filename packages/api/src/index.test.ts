@@ -77,4 +77,70 @@ describe("@zkpay/api", () => {
       errors: [],
     });
   });
+
+  it("verifies Sui settlement through the HTTP boundary", async () => {
+    const app = createZkpayApi({
+      suiVerifier: {
+        async verify(input) {
+          return {
+            ok: true,
+            errors: [],
+            warnings: [],
+            receipt: {
+              paymentId: input.intent.id,
+              status: "succeeded",
+              txDigest: input.txDigest,
+              amount: input.intent.amount,
+              coin: input.intent.coin,
+              receiver: input.intent.receiver,
+              nonce: input.intent.nonce,
+              settledAt: "2026-05-25T01:00:00.000Z",
+            },
+            verification: {
+              ok: true,
+              errors: [],
+            },
+          };
+        },
+      },
+    });
+    const createResponse = await app.request("/payments", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        payment: {
+          amount: "20",
+          coin: "USDC",
+          receiver: "0x84f",
+          label: "API credits",
+        },
+      }),
+    });
+    const payment = await createResponse.json();
+
+    const verifyResponse = await app.request("/payments/verify/sui", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        intent: payment.intent,
+        txDigest: "H2jbnwW7j5T9s2YRJrZupaymentdigest",
+        coinType: "0x2::usdc::USDC",
+        decimals: 6,
+        expectedSender: "0xpayer",
+      }),
+    });
+
+    expect(verifyResponse.status).toBe(200);
+    expect(await verifyResponse.json()).toMatchObject({
+      ok: true,
+      receipt: {
+        paymentId: payment.intent.id,
+        txDigest: "H2jbnwW7j5T9s2YRJrZupaymentdigest",
+      },
+    });
+  });
 });

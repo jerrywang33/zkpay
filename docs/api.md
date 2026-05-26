@@ -99,3 +99,48 @@ Response:
 
 The API does not custody funds and does not mark merchant orders paid by itself.
 Merchant systems should call verification before fulfillment.
+
+## Verify Sui Settlement
+
+```txt
+POST /payments/verify/sui
+```
+
+Request:
+
+```json
+{
+  "intent": {},
+  "txDigest": "H2j...",
+  "coinType": "0x...::usdc::USDC",
+  "decimals": 6,
+  "expectedSender": "0x...",
+  "amountPolicy": "exact",
+  "options": {
+    "enforceExpiration": true
+  }
+}
+```
+
+Response:
+
+```json
+{
+  "ok": true,
+  "errors": [],
+  "receipt": {
+    "paymentId": "zkp_...",
+    "status": "succeeded",
+    "txDigest": "H2j...",
+    "amount": "20",
+    "coin": "USDC",
+    "receiver": "0x...",
+    "nonce": "...",
+    "settledAt": "2026-05-25T01:00:00.000Z"
+  }
+}
+```
+
+The Sui route verifies transaction effects and balance changes through RPC. It
+does not yet prove the zkpay nonce was written onchain, so merchant systems must
+store transaction digests and reject reuse.

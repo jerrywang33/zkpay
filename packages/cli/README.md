@@ -3,7 +3,7 @@
 Command line tools for zkpay payment links.
 
 ```bash
-npm install -g @zkpay/cli@next
+npm install -g zkpay-sh@next
 ```
 
 ```bash
@@ -15,5 +15,17 @@ zkpay link create \
   --json
 ```
 
-This alpha CLI currently focuses on payment link creation and JSON output for
-merchant backend prototypes.
+Verify a Sui testnet receipt:
+
+```bash
+zkpay receipt verify-sui \
+  --intent '<json-or-checkout-url>' \
+  --tx-digest H2j... \
+  --coin-type 0x...::usdc::USDC \
+  --decimals 6 \
+  --network testnet \
+  --json
+```
+
+`@zkpay/cli` remains the workspace package boundary. Public installs use
+`zkpay-sh` until `@zkpay` npm scope access is available.

@@ -29,9 +29,9 @@ starts with the product contract: intent, route policy, and receipt verification
 
 ```txt
 packages/core   PaymentIntent, GasRoutePolicy, ReceiptVerification
-packages/sdk    developer-facing client wrapper
-packages/api    Hono API boundary for create/verify routes
-packages/cli    early zkpay command surface
+packages/sdk    developer-facing client wrapper and Sui settlement verifier
+packages/api    Hono API boundary for create/verify/Sui receipt routes
+packages/cli    payment link and Sui receipt command surface
 packages/zkpay-sh public npm package bundling core, sdk, and cli
 examples/       merchant integration examples
 docs/           product and integration docs
@@ -83,6 +83,9 @@ npm install zkpay-sh@next
 npm install -g zkpay-sh@next
 ```
 
+Node 22 or newer is recommended because the package includes the Sui TypeScript
+SDK.
+
 Package surface:
 
 ```txt
@@ -91,6 +94,19 @@ zkpay-sh/core  Payment model, URI payload, gas routing, receipt verification
 zkpay-sh/sdk   Developer client export
 zkpay          Payment link command surface
 zkpay-sh       CLI alias
+```
+
+Sui testnet settlement:
+
+```ts
+import { ZkpayClient } from "zkpay-sh";
+
+const zkpay = new ZkpayClient();
+const result = await zkpay.verifySuiPayment({
+  intent,
+  txDigest,
+  coinType: "0x...::usdc::USDC",
+});
 ```
 
 Release command:

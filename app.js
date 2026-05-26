@@ -187,8 +187,8 @@ function render() {
               <code>npm install zkpay-sh@next</code>
             </button>
             <div class="release-note">
-              <span>0.1.0-alpha.0</span>
-              <span>SDK, core primitives, and CLI are available in one public package.</span>
+              <span>0.2.0-alpha.1</span>
+              <span>Testnet transaction building and Sui RPC receipt verification are now in the SDK.</span>
             </div>
           </div>
 
@@ -286,11 +286,11 @@ function render() {
         <section class="developer-section" id="developers">
           <div class="developer-copy">
             <p class="eyebrow">Developer surface</p>
-            <h2>Install one package. Create a payment. Verify the receipt.</h2>
+            <h2>Create the intent. Submit on Sui testnet. Verify before fulfillment.</h2>
             <p>
               The public alpha is live as <strong>zkpay-sh@next</strong>. It bundles the
-              SDK, core primitives, and CLI while the internal workspace keeps
-              API, checkout, and verification boundaries clear.
+              SDK, core primitives, CLI, Sui transaction builder, and RPC receipt
+              verifier while the merchant keeps custody and fulfillment logic.
             </p>
           </div>
           <div class="code-stack">
@@ -304,29 +304,49 @@ npm install -g zkpay-sh@next</code></pre>
             </article>
             <article class="code-panel">
               <div class="code-head">
-                <span>SDK</span>
-                <button type="button" data-copy="import { ZkpayClient } from 'zkpay-sh';">Copy</button>
+                <span>Build transaction</span>
+                <button type="button" data-copy="const built = zkpay.buildSuiPaymentTransaction({ intent: payment.intent, payer: '0x...', coinType: '0x...::usdc::USDC', decimals: 6 });">Copy</button>
               </div>
-              <pre><code>import { ZkpayClient } from "zkpay-sh";
-
-const zkpay = new ZkpayClient();
+              <pre><code>const zkpay = new ZkpayClient();
 const payment = zkpay.createPayment({
   amount: "20",
   coin: "USDC",
   receiver: "0x84f",
   label: "API credits"
+});
+
+const built = zkpay.buildSuiPaymentTransaction({
+  intent: payment.intent,
+  payer: "0x...",
+  coinType: "0x...::usdc::USDC",
+  decimals: 6
 });</code></pre>
             </article>
             <article class="code-panel">
               <div class="code-head">
-                <span>CLI</span>
-                <button type="button" data-copy="zkpay link create --amount 20 --coin USDC --receiver 0x84f --label &quot;API credits&quot; --json">Copy</button>
+                <span>Verify digest</span>
+                <button type="button" data-copy="await zkpay.verifySuiPayment({ intent: payment.intent, txDigest, coinType: '0x...::usdc::USDC' });">Copy</button>
               </div>
-              <pre><code>zkpay link create \
-  --amount 20 \
-  --coin USDC \
-  --receiver 0x84f \
-  --label "API credits" \
+              <pre><code>const result = await zkpay.verifySuiPayment({
+  intent: payment.intent,
+  txDigest,
+  coinType: "0x...::usdc::USDC",
+  expectedSender: "0x..."
+});
+
+if (!result.ok) throw new Error(result.errors.join(", "));</code></pre>
+            </article>
+            <article class="code-panel">
+              <div class="code-head">
+                <span>CLI</span>
+                <button type="button" data-copy="zkpay receipt verify-sui --intent '<json-or-checkout-url>' --tx-digest H2j... --coin-type 0x...::usdc::USDC --decimals 6 --network testnet --json">Copy</button>
+              </div>
+              <pre><code>zkpay receipt verify-sui \
+  --intent '&lt;json-or-checkout-url&gt;' \
+  --tx-digest H2j... \
+  --coin-type 0x...::usdc::USDC \
+  --decimals 6 \
+  --network testnet \
   --json</code></pre>
             </article>
           </div>
@@ -359,11 +379,11 @@ const payment = zkpay.createPayment({
         <section class="final-section">
           <div>
             <p class="eyebrow">MVP target</p>
-            <h2>Close the loop for one real stablecoin payment.</h2>
+            <h2>Close the loop for one Sui testnet stablecoin payment.</h2>
             <p>
               The near-term product is not a dashboard-heavy payment suite. It
-              is a working checkout loop: create intent, authorize payment,
-              settle on Sui, and verify the receipt.
+              is a working checkout loop: create intent, submit a Sui transfer,
+              verify the digest, and only then fulfill the order.
             </p>
           </div>
           <a class="primary-action" href="/docs/npm-release.html">Install zkpay-sh</a>
