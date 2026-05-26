@@ -169,6 +169,8 @@ const app = createZkpayApi({
 });
 ```
 
+`examples/cloudflare-worker/` contains a minimal Worker entrypoint and D1 schema.
+
 Release command:
 
 ```bash

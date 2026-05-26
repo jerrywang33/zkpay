@@ -205,3 +205,5 @@ const app = createZkpayApi({
   replayStore: createD1SuiReplayStore(env.DB),
 });
 ```
+
+See `examples/cloudflare-worker/` for a minimal Worker entrypoint and D1 schema.
