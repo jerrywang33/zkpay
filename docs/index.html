@@ -20,7 +20,7 @@
         <nav class="nav" aria-label="Docs navigation">
           <a href="https://zkpay.sh">Website</a>
           <a href="https://github.com/jerrywang33/zkpay">GitHub</a>
-          <a href="./v0.1.html">v0.1</a>
+          <a href="./v0.2.html">v0.2</a>
           <a href="https://x.com/jerrydev90">X</a>
         </nav>
       </header>
@@ -52,7 +52,8 @@
               <p>
                 The first public package is intentionally narrow. It gives
                 builders a deterministic payment object before adding Sui RPC,
-                zkLogin proving, webhook delivery, and merchant operations.
+                hosted wallet settlement, zkLogin proving, webhook delivery,
+                and merchant operations.
               </p>
               <pre><code>npm install zkpay-sh@next
 zkpay link create --amount 20 --coin USDC --receiver 0x84f --json</code></pre>
@@ -83,8 +84,9 @@ const payment = zkpay.createPayment({
               <h2>Testnet settlement</h2>
               <p>
                 v0.2 adds a Sui testnet loop: build a wallet-submittable
-                transaction, get the digest from the wallet, then verify the
-                digest against Sui RPC before fulfillment.
+                transaction, open hosted checkout, get the digest from the
+                wallet, then verify the digest against Sui RPC before
+                fulfillment.
               </p>
               <pre><code>const built = zkpay.buildSuiPaymentTransaction({
   intent: payment.intent,
@@ -99,6 +101,9 @@ const result = await zkpay.verifySuiPayment({
   coinType: "0x...::usdc::USDC",
   expectedSender: "0x..."
 });</code></pre>
+              <pre><code>https://zkpay.sh/pay/zkp_...?intent=...&amp;network=testnet&amp;coinType=0x...::usdc::USDC&amp;decimals=6
+
+// hosted checkout returns txDigest and a /payments/verify/sui payload</code></pre>
             </section>
 
             <section id="model">
@@ -161,7 +166,8 @@ const result = await zkpay.verifySuiPayment({
               </p>
               <pre><code>GET  /health
 POST /payments
-POST /payments/verify</code></pre>
+POST /payments/verify
+POST /payments/verify/sui</code></pre>
               <p><a href="./api.html">Open API reference</a></p>
             </section>
 

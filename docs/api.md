@@ -100,6 +100,10 @@ Response:
 The API does not custody funds and does not mark merchant orders paid by itself.
 Merchant systems should call verification before fulfillment.
 
+Hosted checkout can produce the Sui verification payload after the payer submits
+a wallet transaction. Merchant systems should send that payload to the Sui route
+below from their backend, not trust the browser result alone.
+
 ## Verify Sui Settlement
 
 ```txt

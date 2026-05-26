@@ -64,6 +64,23 @@ const { transaction, amountAtomic } = zkpay.buildSuiPaymentTransaction({
   decimals: 6
 });</code></pre>
 <p>The returned <code>transaction</code> is a Sui TypeScript SDK <code>Transaction</code> that a wallet adapter can sign and execute on testnet.</p>
+</section><section><h2>Hosted Checkout Handoff</h2>
+<p>The hosted checkout route now loads a browser wallet runtime:</p>
+<pre><code class="language-txt">/pay/:paymentId?intent=...&amp;network=testnet&amp;coinType=0x...::usdc::USDC&amp;decimals=6</code></pre>
+<p>The page detects Wallet Standard Sui wallets, asks the payer to connect, submits a stablecoin transfer, captures the returned transaction digest, and then verifies receiver balance changes through Sui RPC.</p>
+<p>After a digest is available, checkout renders the backend verification payload:</p>
+<pre><code class="language-json">{
+  &quot;intent&quot;: {},
+  &quot;txDigest&quot;: &quot;H2j...&quot;,
+  &quot;coinType&quot;: &quot;0x...::usdc::USDC&quot;,
+  &quot;decimals&quot;: 6,
+  &quot;expectedSender&quot;: &quot;0x...&quot;,
+  &quot;amountPolicy&quot;: &quot;exact&quot;,
+  &quot;options&quot;: {
+    &quot;enforceExpiration&quot;: true
+  }
+}</code></pre>
+<p>The wallet handoff is still an alpha settlement path. It does not custody funds and it does not mark merchant orders paid by itself. Merchant backends must call <code>/payments/verify/sui</code> or <code>verifySuiPayment</code> before fulfillment.</p>
 </section><section><h2>Receipt Verification</h2>
 <p>After the wallet returns a transaction digest, verify it through Sui RPC:</p>
 <pre><code class="language-ts">const result = await zkpay.verifySuiPayment({

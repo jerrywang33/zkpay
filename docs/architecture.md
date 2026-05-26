@@ -28,8 +28,10 @@ before fulfillment.
 
 ### Hosted checkout
 
-Presents amount, coin, receiver, and authorization route. It should not custody
-funds.
+Presents amount, coin, receiver, and authorization route. In v0.2 it also loads
+a browser Wallet Standard handoff that can connect a Sui wallet, submit a
+stablecoin transfer, capture the transaction digest, and render the backend
+verification payload. It should not custody funds or decide fulfillment.
 
 ### Sui network
 
@@ -41,6 +43,6 @@ the order.
 
 ## Current Scope
 
-v0.2 connects the SDK and API to Sui RPC for testnet receipt verification.
-zkLogin proving, webhook delivery, digest replay storage, and onchain
+v0.2 connects hosted checkout, the SDK, and the API to a Sui testnet settlement
+loop. zkLogin proving, webhook delivery, digest replay storage, and onchain
 payment-id binding remain the next integration layers.

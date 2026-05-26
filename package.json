@@ -9,8 +9,9 @@
   ],
   "scripts": {
     "check": "npm run check:site && npm run build && npm run typecheck && npm run test",
-    "check:site": "node --check app.js && node --check scripts/deploy.mjs && node --check scripts/dev-server.mjs && node --check scripts/build-docs.mjs && node --check scripts/build-packages.mjs && node --check scripts/build-public-package.mjs && node --check scripts/publish-alpha.mjs && npm run docs:build && node scripts/check-docs.mjs",
+    "check:site": "node --check app.js && node --check scripts/deploy.mjs && node --check scripts/dev-server.mjs && node --check scripts/build-docs.mjs && node --check scripts/build-checkout.mjs && node --check scripts/build-packages.mjs && node --check scripts/build-public-package.mjs && node --check scripts/publish-alpha.mjs && npm run docs:build && npm run checkout:build && node --check checkout.js && node scripts/check-docs.mjs",
     "docs:build": "node scripts/build-docs.mjs",
+    "checkout:build": "node scripts/build-checkout.mjs",
     "build": "node scripts/build-packages.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
@@ -22,11 +23,14 @@
     "deploy": "node scripts/deploy.mjs"
   },
   "dependencies": {
+    "@mysten/wallet-standard": "^0.20.3",
+    "@wallet-standard/app": "^1.1.0",
     "hono": "^4.12.23",
     "zod": "^3.25.0"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "esbuild": "^0.27.7",
     "typescript": "^5.8.0",
     "vitest": "^3.0.0"
   }

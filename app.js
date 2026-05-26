@@ -188,7 +188,7 @@ function render() {
             </button>
             <div class="release-note">
               <span>0.2.0-alpha.1</span>
-              <span>Testnet transaction building and Sui RPC receipt verification are now in the SDK.</span>
+              <span>Hosted checkout can now hand off to a Sui wallet, return a digest, and produce a verify payload.</span>
             </div>
           </div>
 
@@ -286,11 +286,12 @@ function render() {
         <section class="developer-section" id="developers">
           <div class="developer-copy">
             <p class="eyebrow">Developer surface</p>
-            <h2>Create the intent. Submit on Sui testnet. Verify before fulfillment.</h2>
+            <h2>Create the intent. Open checkout. Verify the returned Sui digest.</h2>
             <p>
               The public alpha is live as <strong>zkpay-sh@next</strong>. It bundles the
-              SDK, core primitives, CLI, Sui transaction builder, and RPC receipt
-              verifier while the merchant keeps custody and fulfillment logic.
+              SDK, core primitives, CLI, Sui transaction builder, hosted wallet
+              handoff, and RPC receipt verifier while the merchant keeps custody
+              and fulfillment logic.
             </p>
           </div>
           <div class="code-stack">
@@ -335,6 +336,16 @@ const built = zkpay.buildSuiPaymentTransaction({
 });
 
 if (!result.ok) throw new Error(result.errors.join(", "));</code></pre>
+            </article>
+            <article class="code-panel">
+              <div class="code-head">
+                <span>Hosted checkout</span>
+                <button type="button" data-copy="https://zkpay.sh/pay/zkp_...?intent=...&network=testnet&coinType=0x...::usdc::USDC&decimals=6">Copy</button>
+              </div>
+              <pre><code>https://zkpay.sh/pay/zkp_...?intent=...&amp;network=testnet&amp;coinType=0x...::usdc::USDC&amp;decimals=6
+
+// checkout connects a Sui wallet, submits payment,
+// returns txDigest, then builds /payments/verify/sui payload</code></pre>
             </article>
             <article class="code-panel">
               <div class="code-head">
@@ -452,13 +463,12 @@ function renderCheckoutPage() {
                       : ""
                   }
                   ${renderMetadata(intent.metadata)}
-                  <div class="checkout-actions">
-                    <button type="button" ${expired ? "disabled" : ""}>Continue with zkLogin</button>
-                    <button type="button" ${expired ? "disabled" : ""}>Connect wallet</button>
-                  </div>
                   <p class="checkout-note">
                     ${expired ? "This payment intent is expired." : escapeHtml(gasRoute.note)}
                   </p>
+                  <div class="checkout-runtime" data-checkout-runtime>
+                    <p class="checkout-runtime-status" data-state="busy">Loading checkout runtime...</p>
+                  </div>
                 </article>
               </section>
             `
@@ -477,6 +487,10 @@ function renderCheckoutPage() {
       </main>
     </div>
   `;
+
+  if (intent) {
+    void bootCheckoutRuntime(intent, expired);
+  }
 }
 
 function readIntentFromLocation() {
@@ -529,8 +543,8 @@ function isValidIntent(intent) {
 function resolveCheckoutGasRoute(intent) {
   if (supportedGaslessStablecoins.has(intent.coin)) {
     return {
-      label: "$0 payer gas",
-      note: "Eligible stablecoin transfer route. The payer does not need a separate SUI balance for this transfer.",
+      label: "Gasless candidate",
+      note: "This stablecoin is on the gasless route list. The v0.2 wallet handoff still verifies settlement by digest while live route eligibility is hardened.",
     };
   }
 
@@ -576,6 +590,47 @@ function formatDateTime(value) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+async function bootCheckoutRuntime(intent, expired) {
+  const target = document.querySelector("[data-checkout-runtime]");
+
+  if (!target) return;
+
+  try {
+    const { mountCheckout } = await import("/checkout.js");
+    mountCheckout({
+      target,
+      intent,
+      expired,
+      config: readCheckoutConfig(intent),
+    });
+  } catch (error) {
+    target.innerHTML = `
+      <p class="checkout-runtime-status" data-state="error">
+        Wallet checkout failed to load: ${escapeHtml(error instanceof Error ? error.message : String(error))}
+      </p>
+    `;
+  }
+}
+
+function readCheckoutConfig(intent) {
+  const url = new URL(window.location.href);
+  const network = readCheckoutNetwork(url.searchParams.get("network"));
+  const decimals = Number(url.searchParams.get("decimals") ?? 6);
+
+  return {
+    network,
+    coinType: url.searchParams.get("coinType") ?? (intent.coin.includes("::") ? intent.coin : ""),
+    decimals: Number.isInteger(decimals) && decimals >= 0 ? decimals : 6,
+    rpcUrl: url.searchParams.get("rpcUrl") ?? "",
+  };
+}
+
+function readCheckoutNetwork(value) {
+  return value === "mainnet" || value === "devnet" || value === "localnet"
+    ? value
+    : "testnet";
 }
 
 function shortAddress(address) {

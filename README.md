@@ -17,6 +17,7 @@ The first useful version should close one narrow payment loop:
 merchant creates PaymentIntent
 -> payer opens checkout
 -> payer authorizes stablecoin payment
+-> hosted checkout returns Sui transaction digest
 -> zkpay resolves gas route
 -> merchant verifies receipt
 -> order becomes paid
@@ -35,6 +36,7 @@ packages/cli    payment link and Sui receipt command surface
 packages/zkpay-sh public npm package bundling core, sdk, and cli
 examples/       merchant integration examples
 docs/           product and integration docs
+site/           browser checkout runtime source
 ```
 
 ## Local
@@ -67,6 +69,7 @@ are committed so GitHub Pages can publish the docs directly.
 GET  /health
 POST /payments
 POST /payments/verify
+POST /payments/verify/sui
 ```
 
 Custody, fulfillment, and merchant business logic stay in the merchant app;
@@ -108,6 +111,11 @@ const result = await zkpay.verifySuiPayment({
   coinType: "0x...::usdc::USDC",
 });
 ```
+
+Hosted checkout links under `/pay/:id` now load a browser wallet handoff. The
+page connects a Wallet Standard Sui wallet, submits the stablecoin transfer,
+captures the transaction digest, and emits the JSON payload a merchant backend
+can send to `/payments/verify/sui`.
 
 Release command:
 
