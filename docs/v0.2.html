@@ -170,6 +170,10 @@ if (!result.ok) {
   --binding-package-id 0x... \
   --network testnet \
   --json</code></pre>
+</section><section><h2>Merchant Demo</h2>
+<p>The repository includes a v0.2 merchant example:</p>
+<pre><code class="language-bash">npm run example:merchant</code></pre>
+<p>It creates a hosted checkout URL with Sui runtime parameters, prints the backend <code>/payments/verify/sui</code> payload, and shows where a merchant would fulfill after successful verification.</p>
 </section><section><h2>Current Boundary</h2>
 <p>v0.2 verifies settlement by digest, receiver, coin type, amount, replay store, and optional receipt binding event. The binding package in this repo is still an alpha Move prototype, not a canonical zkpay mainnet package. Production merchant systems should deploy or audit their binding package, store verified digests durably, and reject reuse before fulfillment.</p></section>
           </article>
