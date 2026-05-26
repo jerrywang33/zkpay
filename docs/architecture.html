@@ -51,14 +51,14 @@
 <p>Public consumers should install <code>zkpay-sh@next</code>. The scoped packages remain workspace boundaries until <code>@zkpay</code> npm scope access is available.</p>
 </section><section><h2>Surfaces</h2>
 <h3>Merchant backend</h3>
-<p>Creates payment intents, stores order metadata, receives receipts, and verifies before fulfillment.</p>
+<p>Creates payment intents, stores order metadata, receives receipts, and verifies before fulfillment. In v0.2 the Hono boundary includes a pluggable replay store so a merchant backend can reject reused Sui transaction digests before marking an order paid.</p>
 <h3>Hosted checkout</h3>
 <p>Presents amount, coin, receiver, and authorization route. In v0.2 it also loads a browser Wallet Standard handoff that can connect a Sui wallet, submit a stablecoin transfer, capture the transaction digest, and render the backend verification payload. It should not custody funds or decide fulfillment.</p>
 <h3>Sui network</h3>
 <p>Settles stablecoin transfers and provides transaction data for verification.</p>
 <p>The v0.2 verifier uses Sui RPC transaction effects and balance changes to check the digest, receiver, coin type, and atomic amount before a merchant fulfills the order.</p>
 </section><section><h2>Current Scope</h2>
-<p>v0.2 connects hosted checkout, the SDK, and the API to a Sui testnet settlement loop. zkLogin proving, webhook delivery, digest replay storage, and onchain payment-id binding remain the next integration layers.</p></section>
+<p>v0.2 connects hosted checkout, the SDK, and the API to a Sui testnet settlement loop. The default replay store is in-process memory for demos; durable replay storage, zkLogin proving, webhook delivery, and onchain payment-id binding remain the next integration layers.</p></section>
           </article>
         </div>
       </main>

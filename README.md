@@ -117,6 +117,11 @@ page connects a Wallet Standard Sui wallet, submits the stablecoin transfer,
 captures the transaction digest, and emits the JSON payload a merchant backend
 can send to `/payments/verify/sui`.
 
+The API includes a pluggable Sui replay store. By default it keeps an in-process
+record of verified payment ids and transaction digests, so demos reject repeated
+settlement attempts. Production merchant backends should inject a durable store
+backed by their own database or cache.
+
 Release command:
 
 ```bash

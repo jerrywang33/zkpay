@@ -113,7 +113,15 @@ if (!result.ok) {
   &quot;decimals&quot;: 6,
   &quot;expectedSender&quot;: &quot;0x...&quot;
 }</code></pre>
-<p>The response includes <code>ok</code>, <code>errors</code>, a generated <code>receipt</code>, local verification details, transaction deltas, and warnings.</p>
+<p>The response includes <code>ok</code>, <code>errors</code>, a generated <code>receipt</code>, local verification details, transaction deltas, warnings, and replay guard metadata when the verification succeeds.</p>
+</section><section><h2>Replay Guard</h2>
+<p>The Hono API enables an in-process replay store by default. Once a Sui settlement verifies successfully, the store records both the payment id and transaction digest.</p>
+<p>It rejects:</p>
+<ul>
+<li>the same transaction digest being reused;</li>
+<li>a different transaction digest being submitted for an already settled payment id.</li>
+</ul>
+<p>Replay failures return <code>409</code> with <code>digest_already_used</code> or <code>payment_already_settled</code>. The default store is useful for demos and single process deployments, but production merchant systems should inject a durable store backed by their database or cache.</p>
 </section><section><h2>CLI</h2>
 <p>The CLI can verify a testnet receipt from a checkout URL or serialized intent:</p>
 <pre><code class="language-bash">zkpay receipt verify-sui \
@@ -124,7 +132,7 @@ if (!result.ok) {
   --network testnet \
   --json</code></pre>
 </section><section><h2>Current Boundary</h2>
-<p>v0.2 verifies settlement by digest, receiver, coin type, and amount. The payment nonce is still merchant-side state, not an onchain memo or event. Merchants must store transaction digests and reject reuse before fulfillment. A later version should bind the zkpay payment id or nonce onchain through a memo/event/witness contract.</p></section>
+<p>v0.2 verifies settlement by digest, receiver, coin type, and amount. The payment nonce is still merchant-side state, not an onchain memo or event. The API can reject replay through a merchant-owned store, but a later version should bind the zkpay payment id or nonce onchain through a memo/event/witness contract.</p></section>
           </article>
         </div>
       </main>

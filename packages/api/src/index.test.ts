@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createZkpayApi } from "./index.js";
+import { createZkpayApi, type SuiVerifier } from "./index.js";
 
 describe("@zkpay/api", () => {
   it("creates payments through the HTTP boundary", async () => {
@@ -137,10 +137,209 @@ describe("@zkpay/api", () => {
     expect(verifyResponse.status).toBe(200);
     expect(await verifyResponse.json()).toMatchObject({
       ok: true,
+      replay: {
+        ok: true,
+      },
       receipt: {
         paymentId: payment.intent.id,
         txDigest: "H2jbnwW7j5T9s2YRJrZupaymentdigest",
       },
     });
   });
+
+  it("rejects a repeated Sui digest after successful verification", async () => {
+    const app = createZkpayApi({
+      suiVerifier: makeSuccessfulSuiVerifier(),
+    });
+    const createResponse = await app.request("/payments", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        payment: {
+          amount: "20",
+          coin: "USDC",
+          receiver: "0x84f",
+          label: "API credits",
+        },
+      }),
+    });
+    const payment = await createResponse.json();
+    const request = {
+      intent: payment.intent,
+      txDigest: "H2jbnwW7j5T9s2YRJrZupaymentdigest",
+      coinType: "0x2::usdc::USDC",
+      decimals: 6,
+      expectedSender: "0xpayer",
+    };
+
+    const firstResponse = await app.request("/payments/verify/sui", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(request),
+    });
+    const secondResponse = await app.request("/payments/verify/sui", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(request),
+    });
+
+    expect(firstResponse.status).toBe(200);
+    expect(secondResponse.status).toBe(409);
+    expect(await secondResponse.json()).toMatchObject({
+      ok: false,
+      errors: ["digest_already_used"],
+      replay: {
+        ok: false,
+        reason: "digest_already_used",
+        existing: {
+          paymentId: payment.intent.id,
+          txDigest: request.txDigest,
+        },
+      },
+    });
+  });
+
+  it("rejects a second Sui digest for an already settled payment", async () => {
+    const app = createZkpayApi({
+      suiVerifier: makeSuccessfulSuiVerifier(),
+    });
+    const createResponse = await app.request("/payments", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        payment: {
+          amount: "20",
+          coin: "USDC",
+          receiver: "0x84f",
+          label: "API credits",
+        },
+      }),
+    });
+    const payment = await createResponse.json();
+
+    const firstResponse = await app.request("/payments/verify/sui", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        intent: payment.intent,
+        txDigest: "H2jbnwW7j5T9s2YRJrZupaymentdigestA",
+        coinType: "0x2::usdc::USDC",
+        decimals: 6,
+      }),
+    });
+    const secondResponse = await app.request("/payments/verify/sui", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        intent: payment.intent,
+        txDigest: "H2jbnwW7j5T9s2YRJrZupaymentdigestB",
+        coinType: "0x2::usdc::USDC",
+        decimals: 6,
+      }),
+    });
+
+    expect(firstResponse.status).toBe(200);
+    expect(secondResponse.status).toBe(409);
+    expect(await secondResponse.json()).toMatchObject({
+      ok: false,
+      errors: ["payment_already_settled"],
+      replay: {
+        ok: false,
+        reason: "payment_already_settled",
+        existing: {
+          paymentId: payment.intent.id,
+          txDigest: "H2jbnwW7j5T9s2YRJrZupaymentdigestA",
+        },
+        attempted: {
+          paymentId: payment.intent.id,
+          txDigest: "H2jbnwW7j5T9s2YRJrZupaymentdigestB",
+        },
+      },
+    });
+  });
+
+  it("can disable the in-process Sui replay guard", async () => {
+    const app = createZkpayApi({
+      replayStore: false,
+      suiVerifier: makeSuccessfulSuiVerifier(),
+    });
+    const createResponse = await app.request("/payments", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        payment: {
+          amount: "20",
+          coin: "USDC",
+          receiver: "0x84f",
+          label: "API credits",
+        },
+      }),
+    });
+    const payment = await createResponse.json();
+    const request = {
+      intent: payment.intent,
+      txDigest: "H2jbnwW7j5T9s2YRJrZupaymentdigest",
+      coinType: "0x2::usdc::USDC",
+      decimals: 6,
+    };
+
+    const firstResponse = await app.request("/payments/verify/sui", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(request),
+    });
+    const secondResponse = await app.request("/payments/verify/sui", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(request),
+    });
+
+    expect(firstResponse.status).toBe(200);
+    expect(secondResponse.status).toBe(200);
+    expect(await secondResponse.json()).not.toHaveProperty("replay");
+  });
 });
+
+function makeSuccessfulSuiVerifier(): SuiVerifier {
+  return {
+    async verify(input) {
+      return {
+        ok: true,
+        errors: [],
+        warnings: [],
+        receipt: {
+          paymentId: input.intent.id,
+          status: "succeeded",
+          txDigest: input.txDigest,
+          amount: input.intent.amount,
+          coin: input.intent.coin,
+          receiver: input.intent.receiver,
+          nonce: input.intent.nonce,
+          settledAt: "2026-05-25T01:00:00.000Z",
+        },
+        verification: {
+          ok: true,
+          errors: [],
+        },
+      };
+    },
+  };
+}

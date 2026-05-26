@@ -56,12 +56,13 @@
 <li>Hosted checkout wallet handoff.</li>
 <li>Transaction digest capture from wallet execution.</li>
 <li>Receipt verification against Sui RPC balance changes.</li>
+<li>In-process digest replay guard for <code>/payments/verify/sui</code>.</li>
 <li><code>/payments/verify/sui</code> backend route.</li>
 <li>CLI receipt verification for demos and scripts.</li>
 </ul>
 </section><section><h2>v0.2 Next Hardening</h2>
 <ul>
-<li>Merchant-side digest replay prevention.</li>
+<li>Durable merchant replay store adapters.</li>
 <li>Onchain payment id or nonce binding through event, memo, or witness object.</li>
 <li>Gasless stablecoin eligibility checks from live network data.</li>
 </ul>

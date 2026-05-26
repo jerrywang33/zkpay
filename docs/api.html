@@ -133,7 +133,21 @@
     &quot;settledAt&quot;: &quot;2026-05-25T01:00:00.000Z&quot;
   }
 }</code></pre>
-<p>The Sui route verifies transaction effects and balance changes through RPC. It does not yet prove the zkpay nonce was written onchain, so merchant systems must store transaction digests and reject reuse.</p></section>
+<p>The Sui route verifies transaction effects and balance changes through RPC. It does not yet prove the zkpay nonce was written onchain, so merchant systems must store transaction digests and reject reuse.</p>
+</section><section><h2>Replay Guard</h2>
+<p><code>createZkpayApi()</code> enables an in-process Sui replay store by default. After a successful <code>/payments/verify/sui</code> response, the store records the payment id and transaction digest. A repeated digest or a second digest for the same payment id returns <code>409</code>.</p>
+<p>Replay response shape:</p>
+<pre><code class="language-json">{
+  &quot;ok&quot;: false,
+  &quot;errors&quot;: [&quot;digest_already_used&quot;],
+  &quot;replay&quot;: {
+    &quot;ok&quot;: false,
+    &quot;reason&quot;: &quot;digest_already_used&quot;,
+    &quot;existing&quot;: {},
+    &quot;attempted&quot;: {}
+  }
+}</code></pre>
+<p>The default store only protects a single running API process. Production merchant backends should pass a durable <code>replayStore</code> implementation backed by their own database or cache.</p></section>
           </article>
         </div>
       </main>

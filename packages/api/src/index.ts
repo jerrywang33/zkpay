@@ -6,6 +6,7 @@ import {
   paymentIntentInputSchema,
   paymentIntentSchema,
   paymentReceiptSchema,
+  type PaymentReceipt,
   type SuiReceiptVerifierOptions,
   type SuiSettlementVerificationInput,
   type SuiSettlementVerificationResult,
@@ -53,15 +54,86 @@ export interface SuiVerifier {
   ): Promise<SuiSettlementVerificationResult>;
 }
 
+export type SuiReplayReason = "digest_already_used" | "payment_already_settled";
+
+export interface SuiReplayRecord {
+  paymentId: string;
+  txDigest: string;
+  amount: string;
+  coin: string;
+  receiver: string;
+  nonce: string;
+  settledAt: string;
+  verifiedAt: string;
+}
+
+export type SuiReplayDecision =
+  | {
+      ok: true;
+      record: SuiReplayRecord;
+    }
+  | {
+      ok: false;
+      reason: SuiReplayReason;
+      existing: SuiReplayRecord;
+      attempted: SuiReplayRecord;
+    };
+
+export interface SuiReplayStore {
+  record(record: SuiReplayRecord): Promise<SuiReplayDecision> | SuiReplayDecision;
+}
+
+export class InMemorySuiReplayStore implements SuiReplayStore {
+  private readonly byDigest = new Map<string, SuiReplayRecord>();
+  private readonly byPaymentId = new Map<string, SuiReplayRecord>();
+
+  record(record: SuiReplayRecord): SuiReplayDecision {
+    const digestRecord = this.byDigest.get(record.txDigest);
+
+    if (digestRecord) {
+      return {
+        ok: false,
+        reason: "digest_already_used",
+        existing: digestRecord,
+        attempted: record,
+      };
+    }
+
+    const paymentRecord = this.byPaymentId.get(record.paymentId);
+
+    if (paymentRecord) {
+      return {
+        ok: false,
+        reason: "payment_already_settled",
+        existing: paymentRecord,
+        attempted: record,
+      };
+    }
+
+    this.byDigest.set(record.txDigest, record);
+    this.byPaymentId.set(record.paymentId, record);
+
+    return {
+      ok: true,
+      record,
+    };
+  }
+}
+
 export interface ZkpayApiOptions extends ZkpayClientOptions {
   sui?: SuiReceiptVerifierOptions;
   suiVerifier?: SuiVerifier;
+  replayStore?: SuiReplayStore | false;
 }
 
 export function createZkpayApi(options: ZkpayApiOptions = {}): Hono {
   const app = new Hono();
   const client = new ZkpayClient(options);
   const suiVerifier = options.suiVerifier ?? new SuiReceiptVerifier(options.sui);
+  const replayStore =
+    options.replayStore === undefined
+      ? new InMemorySuiReplayStore()
+      : options.replayStore;
 
   app.get("/health", (context) =>
     context.json({
@@ -148,8 +220,57 @@ export function createZkpayApi(options: ZkpayApiOptions = {}): Hono {
       );
     }
 
+    if (result.ok && result.receipt && replayStore) {
+      let replay;
+
+      try {
+        replay = await replayStore.record(createReplayRecord(result.receipt));
+      } catch (error) {
+        return context.json(
+          {
+            error: "sui_replay_store_failed",
+            details: error instanceof Error ? error.message : String(error),
+          },
+          502,
+        );
+      }
+
+      if (!replay.ok) {
+        return context.json(
+          {
+            ...result,
+            ok: false,
+            errors: [...result.errors, replay.reason],
+            replay,
+          },
+          409,
+        );
+      }
+
+      return context.json(
+        {
+          ...result,
+          replay,
+        },
+        200,
+      );
+    }
+
     return context.json(result, result.ok ? 200 : 422);
   });
 
   return app;
+}
+
+function createReplayRecord(receipt: PaymentReceipt): SuiReplayRecord {
+  return {
+    paymentId: receipt.paymentId,
+    txDigest: receipt.txDigest,
+    amount: receipt.amount,
+    coin: receipt.coin,
+    receiver: receipt.receiver,
+    nonce: receipt.nonce,
+    settledAt: receipt.settledAt,
+    verifiedAt: new Date().toISOString(),
+  };
 }

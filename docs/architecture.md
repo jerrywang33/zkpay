@@ -24,7 +24,9 @@ workspace boundaries until `@zkpay` npm scope access is available.
 ### Merchant backend
 
 Creates payment intents, stores order metadata, receives receipts, and verifies
-before fulfillment.
+before fulfillment. In v0.2 the Hono boundary includes a pluggable replay store
+so a merchant backend can reject reused Sui transaction digests before marking
+an order paid.
 
 ### Hosted checkout
 
@@ -44,5 +46,6 @@ the order.
 ## Current Scope
 
 v0.2 connects hosted checkout, the SDK, and the API to a Sui testnet settlement
-loop. zkLogin proving, webhook delivery, digest replay storage, and onchain
-payment-id binding remain the next integration layers.
+loop. The default replay store is in-process memory for demos; durable replay
+storage, zkLogin proving, webhook delivery, and onchain payment-id binding
+remain the next integration layers.

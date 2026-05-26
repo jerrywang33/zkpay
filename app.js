@@ -188,7 +188,7 @@ function render() {
             </button>
             <div class="release-note">
               <span>0.2.0-alpha.1</span>
-              <span>Hosted checkout can now hand off to a Sui wallet, return a digest, and produce a verify payload.</span>
+              <span>Hosted checkout now returns a Sui digest, and the API can reject repeated verified digests.</span>
             </div>
           </div>
 
