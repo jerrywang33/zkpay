@@ -1,13 +1,37 @@
 {
   "name": "@zkpay/sdk",
-  "version": "0.1.0",
+  "version": "0.1.0-alpha.0",
+  "description": "Developer SDK for creating zkpay payment links and verifying receipts.",
   "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "license": "MIT",
+  "homepage": "https://zkpay.sh",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jerrywang33/zkpay.git",
+    "directory": "packages/sdk"
+  },
+  "bugs": {
+    "url": "https://github.com/jerrywang33/zkpay/issues"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "dependencies": {
-    "@zkpay/core": "0.1.0"
+    "@zkpay/core": "0.1.0-alpha.0"
   }
 }

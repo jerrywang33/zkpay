@@ -39,6 +39,12 @@ const pages = [
     description: "The staged path from model-first v0.1 to merchant operations.",
   },
   {
+    input: "docs/npm-release.md",
+    output: "docs/npm-release.html",
+    title: "npm Release",
+    description: "How zkpay alpha packages are built, packed, and published under the next dist-tag.",
+  },
+  {
     input: "docs/decisions/0001-model-first.md",
     output: "docs/decisions/0001-model-first.html",
     title: "ADR 0001: Model First",
@@ -111,6 +117,7 @@ function renderSideNav(currentOutput) {
     ["Architecture", "docs/architecture.html"],
     ["zkLogin", "docs/zklogin.html"],
     ["Gas routing", "docs/sui-gas-routing.html"],
+    ["npm release", "docs/npm-release.html"],
     ["Roadmap", "docs/roadmap.html"],
     ["ADR 0001", "docs/decisions/0001-model-first.html"],
   ];

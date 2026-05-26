@@ -40,6 +40,7 @@ docs/           product and integration docs
 
 ```bash
 npm install
+npm run build
 npm run check
 npm run example:merchant
 npm run dev
@@ -70,6 +71,29 @@ POST /payments/verify
 Custody, fulfillment, and merchant business logic stay in the merchant app;
 zkpay defines the payment object, route decision, and receipt verification
 result.
+
+## npm Alpha Packages
+
+The first npm alpha release targets the developer-facing packages:
+
+```bash
+npm install @zkpay/sdk@next
+npm install -g @zkpay/cli@next
+```
+
+Published package targets:
+
+```txt
+@zkpay/core  Payment model, URI payload, gas routing, receipt verification
+@zkpay/sdk   Developer client around core primitives
+@zkpay/cli   Payment link command surface
+```
+
+Release command:
+
+```bash
+npm run publish:alpha
+```
 
 ## Deploy
 

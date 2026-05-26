@@ -1,5 +1,7 @@
 .wrangler/
 node_modules/
+packages/*/dist/
+.npm-cache/
 .DS_Store
 .env*
 outputs/
