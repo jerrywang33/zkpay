@@ -1,13 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
   buildHostedCheckoutUrl,
+  canonicalizePaymentIntent,
+  createSignedPaymentIntent,
   createPaymentIntent,
   findGaslessStablecoinAsset,
   formatPaymentUri,
   isPaymentIntentExpired,
+  parseHostedCheckoutRequest,
   parseHostedCheckoutUrl,
   parsePaymentUri,
   resolveGasRoute,
+  signPaymentIntent,
+  verifyPaymentIntentSignature,
   verifyPaymentReceipt,
   type PaymentIntent,
   type PaymentReceipt,
@@ -93,6 +98,45 @@ describe("@zkpay/core", () => {
 
     expect(checkoutUrl).toContain("https://zkpay.sh/pay/zkp_test123");
     expect(parseHostedCheckoutUrl(checkoutUrl)).toEqual(intent);
+  });
+
+  it("round-trips signed hosted checkout requests", () => {
+    const intent = makeIntent();
+    const signature = signPaymentIntent(intent, "merchant_secret");
+    const checkoutUrl = buildHostedCheckoutUrl("https://zkpay.sh", intent, {
+      signature,
+    });
+
+    expect(parseHostedCheckoutRequest(checkoutUrl)).toEqual({
+      intent,
+      signature,
+    });
+    expect(
+      verifyPaymentIntentSignature(intent, signature, "merchant_secret"),
+    ).toBe(true);
+    expect(
+      verifyPaymentIntentSignature(
+        { ...intent, amount: "21" },
+        signature,
+        "merchant_secret",
+      ),
+    ).toBe(false);
+  });
+
+  it("canonicalizes payment intents before signing", () => {
+    const intent = makeIntent({
+      metadata: {
+        z: "last",
+        a: "first",
+      },
+    });
+    const signed = createSignedPaymentIntent(intent, "merchant_secret");
+
+    expect(canonicalizePaymentIntent(intent)).toBe(
+      '{"amount":"20","coin":"USDC","createdAt":"2026-05-25T00:00:00.000Z","expiresAt":"2026-05-26T00:00:00.000Z","id":"zkp_test123","label":"API credits","metadata":{"a":"first","z":"last"},"nonce":"nonce_test123","receiver":"0x84f"}',
+    );
+    expect(signed.algorithm).toBe("hmac-sha256");
+    expect(signed.signature).toHaveLength(43);
   });
 
   it("adds Sui checkout runtime parameters to hosted checkout URLs", () => {

@@ -158,6 +158,10 @@ Gas routing now accepts an optional stablecoin registry with `network`,
 `coinType`, and `decimals`, so merchants can use a stricter allowlist than the
 default symbol-only policy when they know the exact Sui asset path.
 
+Payment intents can also be HMAC-signed before they are sent through hosted
+checkout URLs. This gives merchant backends a simple way to reject tampered
+amount, receiver, nonce, or metadata fields before fulfillment.
+
 The API includes a pluggable Sui replay store. By default it keeps an in-process
 record of verified payment ids and transaction digests, so demos reject repeated
 settlement attempts. Production merchant backends should inject a durable store

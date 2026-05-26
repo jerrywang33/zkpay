@@ -6,6 +6,7 @@ import {
   paymentIntentInputSchema,
   paymentIntentSchema,
   paymentReceiptSchema,
+  type PaymentIntent,
   type PaymentReceipt,
   type SuiReceiptVerifierOptions,
   type SuiSettlementVerificationInput,
@@ -36,6 +37,7 @@ const createPaymentRequestSchema = z.object({
 
 const verifyPaymentRequestSchema = z.object({
   intent: paymentIntentSchema,
+  signature: z.string().min(1).optional(),
   receipt: paymentReceiptSchema,
   options: z
     .object({
@@ -47,6 +49,7 @@ const verifyPaymentRequestSchema = z.object({
 
 const verifySuiPaymentRequestSchema = z.object({
   intent: paymentIntentSchema,
+  signature: z.string().min(1).optional(),
   txDigest: z.string().min(16),
   coinType: z.string().min(1).optional(),
   decimals: z.number().int().nonnegative().optional(),
@@ -246,6 +249,7 @@ export interface ZkpayApiOptions extends ZkpayClientOptions {
   sui?: SuiReceiptVerifierOptions;
   suiVerifier?: SuiVerifier;
   replayStore?: SuiReplayStore | false;
+  requireIntentSignature?: boolean;
 }
 
 export function createZkpayApi(options: ZkpayApiOptions = {}): Hono {
@@ -296,6 +300,22 @@ export function createZkpayApi(options: ZkpayApiOptions = {}): Hono {
       );
     }
 
+    const signatureError = verifyIntentSignatureBoundary(
+      client,
+      payload.data.intent,
+      payload.data.signature,
+      options,
+    );
+
+    if (signatureError) {
+      return context.json(
+        {
+          error: signatureError,
+        },
+        401,
+      );
+    }
+
     const result = client.verifyPayment(
       payload.data.intent,
       payload.data.receipt,
@@ -317,6 +337,22 @@ export function createZkpayApi(options: ZkpayApiOptions = {}): Hono {
           details: payload.error.issues,
         },
         400,
+      );
+    }
+
+    const signatureError = verifyIntentSignatureBoundary(
+      client,
+      payload.data.intent,
+      payload.data.signature,
+      options,
+    );
+
+    if (signatureError) {
+      return context.json(
+        {
+          error: signatureError,
+        },
+        401,
       );
     }
 
@@ -396,6 +432,25 @@ function createReplayRecord(receipt: PaymentReceipt): SuiReplayRecord {
     settledAt: receipt.settledAt,
     verifiedAt: new Date().toISOString(),
   };
+}
+
+function verifyIntentSignatureBoundary(
+  client: ZkpayClient,
+  intent: PaymentIntent,
+  signature: string | undefined,
+  options: ZkpayApiOptions,
+): "payment_intent_signature_missing" | "payment_intent_signature_invalid" | null {
+  if (!options.requireIntentSignature && !signature) {
+    return null;
+  }
+
+  if (!signature) {
+    return "payment_intent_signature_missing";
+  }
+
+  return client.verifyIntentSignature(intent, signature)
+    ? null
+    : "payment_intent_signature_invalid";
 }
 
 async function findD1ReplayRecord(

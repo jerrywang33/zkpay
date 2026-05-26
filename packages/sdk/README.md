@@ -11,6 +11,7 @@ import { ZkpayClient } from "zkpay-sh";
 
 const zkpay = new ZkpayClient({
   baseUrl: "https://zkpay.sh",
+  signingSecret: process.env.ZKPAY_SIGNING_SECRET,
   gaslessStablecoins: [
     {
       symbol: "USDC",
@@ -40,6 +41,10 @@ const payment = zkpay.createPayment({
 
 console.log(payment.checkoutUrl);
 ```
+
+When `signingSecret` is configured, `createPayment` adds a HMAC signature to the
+hosted checkout URL. Merchant backends can verify that signature before trusting
+the intent payload.
 
 When checkout only specifies `network`, the SDK can fill `coinType` and
 `decimals` from `gaslessStablecoins`.

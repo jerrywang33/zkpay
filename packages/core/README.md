@@ -11,6 +11,8 @@ import {
   buildHostedCheckoutUrl,
   createPaymentIntent,
   resolveGasRoute,
+  signPaymentIntent,
+  verifyPaymentIntentSignature,
   verifyPaymentReceipt,
 } from "zkpay-sh/core";
 ```
@@ -27,6 +29,14 @@ buildHostedCheckoutUrl("https://zkpay.sh", intent, {
   decimals: 6,
   bindingPackageId: "0x...",
 });
+```
+
+Payment intents can be signed before they are placed in hosted checkout URLs:
+
+```ts
+const signature = signPaymentIntent(intent, process.env.ZKPAY_SIGNING_SECRET);
+
+verifyPaymentIntentSignature(intent, signature, process.env.ZKPAY_SIGNING_SECRET);
 ```
 
 Gas routing can use a strict stablecoin registry:

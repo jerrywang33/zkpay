@@ -72,6 +72,7 @@ const { transaction, amountAtomic } = zkpay.buildSuiPaymentTransaction({
 <pre><code class="language-txt">/pay/:paymentId?intent=...&amp;network=testnet&amp;coinType=0x...::usdc::USDC&amp;decimals=6&amp;bindingPackageId=0x...</code></pre>
 <p>SDK, API, and CLI payment creation can attach the Sui checkout parameters for <code>network</code>, <code>coinType</code>, <code>decimals</code>, <code>rpcUrl</code>, <code>bindingPackageId</code>, and <code>bindingEventType</code>. The page detects Wallet Standard Sui wallets, asks the payer to connect, submits a stablecoin transfer, captures the returned transaction digest, and then verifies receiver balance changes through Sui RPC.</p>
 <p>SDK clients can also configure <code>gaslessStablecoins</code> so checkout URLs fill <code>coinType</code> and <code>decimals</code> from a known registry when the payment creation call only passes <code>network</code>.</p>
+<p>Hosted checkout URLs can carry a HMAC signature over the canonical payment intent payload. Merchant backends should verify that signature before trusting a browser-provided intent for fulfillment. The hosted checkout page includes the signature in the generated <code>/payments/verify/sui</code> payload.</p>
 <p>After a digest is available, checkout renders the backend verification payload:</p>
 <pre><code class="language-json">{
   &quot;intent&quot;: {},

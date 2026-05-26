@@ -122,6 +122,85 @@ describe("@zkpay/api", () => {
     });
   });
 
+  it("can require signed payment intents at the HTTP boundary", async () => {
+    const app = createZkpayApi({
+      signingSecret: "merchant_secret",
+      requireIntentSignature: true,
+    });
+    const createResponse = await app.request("/payments", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        payment: {
+          amount: "20",
+          coin: "USDC",
+          receiver: "0x84f",
+          label: "API credits",
+        },
+      }),
+    });
+    const payment = await createResponse.json();
+    const receipt = {
+      paymentId: payment.intent.id,
+      status: "succeeded",
+      txDigest: "9T9T9T9T9T9T9T9T",
+      amount: payment.intent.amount,
+      coin: payment.intent.coin,
+      receiver: payment.intent.receiver,
+      nonce: payment.intent.nonce,
+      settledAt: "2026-05-25T01:00:00.000Z",
+    };
+
+    const missingSignatureResponse = await app.request("/payments/verify", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        intent: payment.intent,
+        receipt,
+      }),
+    });
+    const signedResponse = await app.request("/payments/verify", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        intent: payment.intent,
+        signature: payment.signature,
+        receipt,
+      }),
+    });
+    const tamperedResponse = await app.request("/payments/verify", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        intent: {
+          ...payment.intent,
+          amount: "21",
+        },
+        signature: payment.signature,
+        receipt,
+      }),
+    });
+
+    expect(payment.signature).toBeTruthy();
+    expect(missingSignatureResponse.status).toBe(401);
+    expect(await missingSignatureResponse.json()).toEqual({
+      error: "payment_intent_signature_missing",
+    });
+    expect(signedResponse.status).toBe(200);
+    expect(tamperedResponse.status).toBe(401);
+    expect(await tamperedResponse.json()).toEqual({
+      error: "payment_intent_signature_invalid",
+    });
+  });
+
   it("verifies Sui settlement through the HTTP boundary", async () => {
     let capturedBinding: unknown;
     const app = createZkpayApi({

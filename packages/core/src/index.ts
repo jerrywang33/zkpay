@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 
 export const ZKPAY_URI_PROTOCOL = "zkpay:";
@@ -83,6 +83,12 @@ export interface HostedCheckoutOptions {
   rpcUrl?: string;
   bindingPackageId?: string;
   bindingEventType?: string;
+  signature?: string;
+}
+
+export interface HostedCheckoutRequest {
+  intent: PaymentIntent;
+  signature?: string;
 }
 
 export interface CreatePaymentIntentOptions {
@@ -149,6 +155,14 @@ export interface ReceiptVerificationResult {
   ok: boolean;
   errors: ReceiptVerificationError[];
   details?: string[];
+}
+
+export type PaymentIntentSignatureAlgorithm = "hmac-sha256";
+
+export interface SignedPaymentIntent {
+  intent: PaymentIntent;
+  signature: string;
+  algorithm: PaymentIntentSignatureAlgorithm;
 }
 
 export function createPaymentIntent(
@@ -230,6 +244,48 @@ export function decodePaymentIntentPayload(payload: string): PaymentIntent {
   return paymentIntentSchema.parse(JSON.parse(decoded));
 }
 
+export function canonicalizePaymentIntent(intent: PaymentIntent): string {
+  return stableJsonStringify(paymentIntentSchema.parse(intent));
+}
+
+export function signPaymentIntent(
+  intent: PaymentIntent,
+  secret: string,
+): string {
+  const key = secret.trim();
+
+  if (!key) {
+    throw new Error("Payment intent signing secret is required");
+  }
+
+  return createHmac("sha256", key)
+    .update(canonicalizePaymentIntent(intent))
+    .digest("base64url");
+}
+
+export function createSignedPaymentIntent(
+  intent: PaymentIntent,
+  secret: string,
+): SignedPaymentIntent {
+  return {
+    intent: paymentIntentSchema.parse(intent),
+    signature: signPaymentIntent(intent, secret),
+    algorithm: "hmac-sha256",
+  };
+}
+
+export function verifyPaymentIntentSignature(
+  intent: PaymentIntent,
+  signature: string,
+  secret: string,
+): boolean {
+  try {
+    return timingSafeStringEqual(signature, signPaymentIntent(intent, secret));
+  } catch {
+    return false;
+  }
+}
+
 export function buildHostedCheckoutUrl(
   baseUrl: string,
   intent: PaymentIntent,
@@ -248,11 +304,16 @@ export function buildHostedCheckoutUrl(
   appendOptionalSearchParam(url, "rpcUrl", options.rpcUrl);
   appendOptionalSearchParam(url, "bindingPackageId", options.bindingPackageId);
   appendOptionalSearchParam(url, "bindingEventType", options.bindingEventType);
+  appendOptionalSearchParam(url, "signature", options.signature);
 
   return url.toString();
 }
 
 export function parseHostedCheckoutUrl(url: string): PaymentIntent {
+  return parseHostedCheckoutRequest(url).intent;
+}
+
+export function parseHostedCheckoutRequest(url: string): HostedCheckoutRequest {
   const parsed = new URL(url);
   const payload = parsed.searchParams.get("intent");
 
@@ -260,7 +321,10 @@ export function parseHostedCheckoutUrl(url: string): PaymentIntent {
     throw new Error("Hosted checkout URL is missing intent payload");
   }
 
-  return decodePaymentIntentPayload(payload);
+  return {
+    intent: decodePaymentIntentPayload(payload),
+    signature: parsed.searchParams.get("signature") ?? undefined,
+  };
 }
 
 export function isPaymentIntentExpired(
@@ -393,6 +457,40 @@ function toIsoString(value: Date | string): string {
 
 function sameCoinType(left: string, right: string): boolean {
   return left.trim() === right.trim();
+}
+
+function timingSafeStringEqual(left: string, right: string): boolean {
+  const leftBytes = Buffer.from(left);
+  const rightBytes = Buffer.from(right);
+
+  if (leftBytes.length !== rightBytes.length) {
+    return false;
+  }
+
+  return timingSafeEqual(leftBytes, rightBytes);
+}
+
+function stableJsonStringify(value: unknown): string {
+  if (value === null) return "null";
+
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableJsonStringify(item)).join(",")}]`;
+  }
+
+  if (typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, item]) => item !== undefined)
+      .sort(([left], [right]) => left.localeCompare(right));
+
+    return `{${entries
+      .map(
+        ([key, item]) =>
+          `${JSON.stringify(key)}:${stableJsonStringify(item)}`,
+      )
+      .join(",")}}`;
+  }
+
+  return JSON.stringify(value);
 }
 
 function randomToken(bytes: number): string {

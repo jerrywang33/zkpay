@@ -38,20 +38,21 @@ available. Public installs should use `zkpay-sh/api`.
 The current alpha version is:
 
 ```txt
-0.2.0-alpha.7
+0.2.0-alpha.8
 ```
 
 It is published under the `next` dist-tag. Developer docs should use
 `zkpay-sh@next`; `latest` is not the integration target while the package is in
 alpha.
 
-`0.2.0-alpha.7` lets SDK clients fill hosted checkout `coinType` and `decimals`
-from `gaslessStablecoins` when payment creation only passes `network`.
+`0.2.0-alpha.8` adds HMAC-signed payment intents across core, SDK, API
+verification, and hosted checkout verify payloads. `0.2.0-alpha.7` lets SDK
+clients fill hosted checkout `coinType` and `decimals` from
+`gaslessStablecoins` when payment creation only passes `network`.
 `0.2.0-alpha.6` added structured gasless stablecoin registry inputs for
-`network`, `coinType`, and `decimals`. `0.2.0-alpha.5` added a Cloudflare D1
-replay store adapter for the public `zkpay-sh/api` subpath. These build on the
-checkout URL runtime options added in `0.2.0-alpha.3` and the optional Sui
-receipt binding support from `0.2.0-alpha.2`.
+`network`, `coinType`, and `decimals`. These build on the D1 replay store,
+checkout runtime options, and optional Sui receipt binding work from earlier
+alpha releases.
 
 ## Local Release Flow
 

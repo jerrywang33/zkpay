@@ -91,6 +91,7 @@ Request:
 ```json
 {
   "intent": {},
+  "signature": "hmac...",
   "receipt": {},
   "options": {
     "enforceExpiration": true
@@ -125,6 +126,7 @@ Request:
 ```json
 {
   "intent": {},
+  "signature": "hmac...",
   "txDigest": "H2j...",
   "coinType": "0x...::usdc::USDC",
   "decimals": 6,
@@ -163,6 +165,9 @@ The Sui route verifies transaction effects and balance changes through RPC. It
 can also require a `PaymentBound` event when `binding.packageId` is supplied.
 Without binding, merchant systems must treat the zkpay nonce as offchain state,
 store transaction digests, and reject reuse.
+
+If `createZkpayApi({ signingSecret, requireIntentSignature: true })` is used,
+both verification routes reject missing or invalid signatures with `401`.
 
 ## Replay Guard
 

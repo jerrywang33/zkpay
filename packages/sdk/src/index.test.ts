@@ -47,6 +47,43 @@ describe("@zkpay/sdk", () => {
     expect(client.parsePaymentUri(payment.paymentUri)).toEqual(payment.intent);
   });
 
+  it("creates and verifies signed checkout URLs", () => {
+    const client = new ZkpayClient({
+      baseUrl: "https://checkout.zkpay.local",
+      signingSecret: "merchant_secret",
+    });
+
+    const payment = client.createPayment(
+      {
+        amount: "20",
+        coin: "USDC",
+        receiver: "0x84f",
+        label: "API credits",
+      },
+      {
+        id: "zkp_signed123",
+        nonce: "nonce_signed123",
+        now: "2026-05-25T00:00:00.000Z",
+      },
+    );
+    const checkoutRequest = client.parseCheckoutRequest(payment.checkoutUrl);
+
+    expect(payment.signature).toBeTruthy();
+    expect(checkoutRequest.signature).toBe(payment.signature);
+    expect(
+      client.verifyIntentSignature(
+        checkoutRequest.intent,
+        checkoutRequest.signature ?? "",
+      ),
+    ).toBe(true);
+    expect(
+      client.verifyIntentSignature(
+        { ...checkoutRequest.intent, amount: "21" },
+        checkoutRequest.signature ?? "",
+      ),
+    ).toBe(false);
+  });
+
   it("creates Sui checkout URLs with runtime parameters", () => {
     const client = new ZkpayClient({
       baseUrl: "https://checkout.zkpay.local",

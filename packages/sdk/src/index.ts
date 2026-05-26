@@ -3,13 +3,17 @@ import {
   createPaymentIntent,
   findGaslessStablecoinAsset,
   formatPaymentUri,
+  parseHostedCheckoutRequest,
   parseHostedCheckoutUrl,
   parsePaymentUri,
   resolveGasRoute,
+  signPaymentIntent,
+  verifyPaymentIntentSignature,
   verifyPaymentReceipt,
   type CreatePaymentIntentOptions,
   type GasRouteDecision,
   type GaslessStablecoinAsset,
+  type HostedCheckoutRequest,
   type HostedCheckoutOptions,
   type PaymentIntent,
   type PaymentIntentInput,
@@ -31,6 +35,7 @@ export interface ZkpayClientOptions {
   baseUrl?: string;
   sponsorEnabled?: boolean;
   gaslessStablecoins?: readonly GaslessStablecoinAsset[];
+  signingSecret?: string;
   sui?: SuiReceiptVerifierOptions;
 }
 
@@ -38,6 +43,8 @@ export interface CreatePaymentOptions extends CreatePaymentIntentOptions {
   requiresProgrammableTransaction?: boolean;
   checkout?: HostedCheckoutOptions;
   gaslessStablecoins?: readonly GaslessStablecoinAsset[];
+  signingSecret?: string;
+  signature?: string;
 }
 
 export interface CreatedPayment {
@@ -45,18 +52,21 @@ export interface CreatedPayment {
   checkoutUrl: string;
   paymentUri: string;
   gasRoute: GasRouteDecision;
+  signature?: string;
 }
 
 export class ZkpayClient {
   private readonly baseUrl: string;
   private readonly sponsorEnabled: boolean;
   private readonly gaslessStablecoins?: readonly GaslessStablecoinAsset[];
+  private readonly signingSecret?: string;
   private readonly sui?: SuiReceiptVerifierOptions;
 
   constructor(options: ZkpayClientOptions = {}) {
     this.baseUrl = options.baseUrl ?? "https://zkpay.sh";
     this.sponsorEnabled = options.sponsorEnabled ?? true;
     this.gaslessStablecoins = options.gaslessStablecoins;
+    this.signingSecret = options.signingSecret;
     this.sui = options.sui;
   }
 
@@ -70,9 +80,20 @@ export class ZkpayClient {
     );
     const gaslessStablecoins =
       options.gaslessStablecoins ?? this.gaslessStablecoins;
+    const signature =
+      options.signature ??
+      (options.signingSecret ?? this.signingSecret
+        ? signPaymentIntent(
+            intent,
+            options.signingSecret ?? this.signingSecret ?? "",
+          )
+        : undefined);
     const checkout = resolveCheckoutOptionsFromRegistry(
       intent,
-      options.checkout,
+      {
+        ...options.checkout,
+        signature,
+      },
       gaslessStablecoins,
     );
     const gasRoute = resolveGasRoute({
@@ -90,6 +111,7 @@ export class ZkpayClient {
       checkoutUrl: buildHostedCheckoutUrl(this.baseUrl, intent, checkout),
       paymentUri: formatPaymentUri(intent),
       gasRoute,
+      signature,
     };
   }
 
@@ -97,8 +119,21 @@ export class ZkpayClient {
     return parseHostedCheckoutUrl(checkoutUrl);
   }
 
+  parseCheckoutRequest(checkoutUrl: string): HostedCheckoutRequest {
+    return parseHostedCheckoutRequest(checkoutUrl);
+  }
+
   parsePaymentUri(paymentUri: string): PaymentIntent {
     return parsePaymentUri(paymentUri);
+  }
+
+  verifyIntentSignature(
+    intent: PaymentIntent,
+    signature: string,
+    secret = this.signingSecret,
+  ): boolean {
+    if (!secret) return false;
+    return verifyPaymentIntentSignature(intent, signature, secret);
   }
 
   verifyPayment(

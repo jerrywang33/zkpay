@@ -640,6 +640,7 @@ function readCheckoutConfig(intent) {
     rpcUrl: url.searchParams.get("rpcUrl") ?? "",
     bindingPackageId: url.searchParams.get("bindingPackageId") ?? "",
     bindingEventType: url.searchParams.get("bindingEventType") ?? "",
+    signature: url.searchParams.get("signature") ?? "",
   };
 }
 

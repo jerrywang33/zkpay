@@ -19,6 +19,10 @@ The same route can require an onchain zkpay receipt event by passing
 `binding.packageId`. When present, verification fails unless `PaymentBound`
 matches the payer, receiver, amount, coin type, payment id, and nonce.
 
+When `createZkpayApi({ signingSecret, requireIntentSignature: true })` is used,
+`/payments/verify` and `/payments/verify/sui` reject missing or invalid hosted
+checkout signatures before receipt verification runs.
+
 `POST /payments` also accepts `options.checkout` so merchant backends can
 generate hosted checkout URLs with `network`, `coinType`, `decimals`, and
 `bindingPackageId` already attached.

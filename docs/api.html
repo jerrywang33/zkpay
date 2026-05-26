@@ -99,6 +99,7 @@
 <p>Request:</p>
 <pre><code class="language-json">{
   &quot;intent&quot;: {},
+  &quot;signature&quot;: &quot;hmac...&quot;,
   &quot;receipt&quot;: {},
   &quot;options&quot;: {
     &quot;enforceExpiration&quot;: true
@@ -116,6 +117,7 @@
 <p>Request:</p>
 <pre><code class="language-json">{
   &quot;intent&quot;: {},
+  &quot;signature&quot;: &quot;hmac...&quot;,
   &quot;txDigest&quot;: &quot;H2j...&quot;,
   &quot;coinType&quot;: &quot;0x...::usdc::USDC&quot;,
   &quot;decimals&quot;: 6,
@@ -145,6 +147,7 @@
   }
 }</code></pre>
 <p>The Sui route verifies transaction effects and balance changes through RPC. It can also require a <code>PaymentBound</code> event when <code>binding.packageId</code> is supplied. Without binding, merchant systems must treat the zkpay nonce as offchain state, store transaction digests, and reject reuse.</p>
+<p>If <code>createZkpayApi({ signingSecret, requireIntentSignature: true })</code> is used, both verification routes reject missing or invalid signatures with <code>401</code>.</p>
 </section><section><h2>Replay Guard</h2>
 <p><code>createZkpayApi()</code> enables an in-process Sui replay store by default. After a successful <code>/payments/verify/sui</code> response, the store records the payment id and transaction digest. A repeated digest or a second digest for the same payment id returns <code>409</code>.</p>
 <p>Replay response shape:</p>

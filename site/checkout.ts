@@ -40,6 +40,7 @@ interface CheckoutConfig {
   rpcUrl: string;
   bindingPackageId: string;
   bindingEventType: string;
+  signature: string;
 }
 
 interface MountCheckoutInput {
@@ -628,6 +629,7 @@ function buildVerifyPayload(intent: PaymentIntent, state: CheckoutState) {
 
   return {
     intent,
+    signature: state.signature.trim() || undefined,
     txDigest: state.digest,
     coinType: state.coinType.trim(),
     decimals: state.decimals,

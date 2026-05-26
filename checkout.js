@@ -8804,6 +8804,7 @@ function buildVerifyPayload(intent, state) {
   if (!state.digest || !state.coinType.trim()) return null;
   return {
     intent,
+    signature: state.signature.trim() || void 0,
     txDigest: state.digest,
     coinType: state.coinType.trim(),
     decimals: state.decimals,
