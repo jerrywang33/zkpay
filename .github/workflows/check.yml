@@ -17,3 +17,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+      - name: Install suiup
+        run: cargo install --git https://github.com/Mystenlabs/suiup.git --locked
+      - name: Install Sui CLI
+        run: |
+          suiup install sui@testnet -y
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - run: npm run move:build
