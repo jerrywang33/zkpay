@@ -1,10 +1,12 @@
 import { ZkpayClient, type PaymentReceipt } from "@zkpay/sdk";
 
+const bindingPackageId = process.env.ZKPAY_BINDING_PACKAGE_ID ?? "0xabc";
+
 const checkout = {
   network: "testnet" as const,
   coinType: "0x2::usdc::USDC",
   decimals: 6,
-  bindingPackageId: "0xabc",
+  bindingPackageId,
 };
 
 const zkpay = new ZkpayClient({

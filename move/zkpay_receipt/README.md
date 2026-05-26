@@ -32,6 +32,14 @@ From the repository root, use:
 
 ```bash
 npm run move:build
+npm run move:publish:testnet
+```
+
+`npm run move:publish:testnet` uses the active Sui CLI account and defaults to a
+`100000000` MIST gas budget. Override the gas budget if needed:
+
+```bash
+ZKPAY_RECEIPT_GAS_BUDGET=200000000 npm run move:publish:testnet
 ```
 
 This is not yet a canonical zkpay mainnet package. Production users should

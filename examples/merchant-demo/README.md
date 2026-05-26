@@ -12,6 +12,12 @@ Run from the repository root:
 node examples/merchant-demo/index.ts
 ```
 
+Use a real deployed receipt package when one is available:
+
+```bash
+ZKPAY_BINDING_PACKAGE_ID=0x... npm run example:merchant
+```
+
 Expected output includes:
 
 ```txt

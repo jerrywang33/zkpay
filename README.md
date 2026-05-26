@@ -47,6 +47,7 @@ npm install
 npm run build
 npm run check
 npm run move:build
+npm run move:publish:testnet
 npm run example:merchant
 npm run dev
 ```
@@ -56,6 +57,10 @@ fallback, so generated URLs like `/pay/zkp_...?intent=...` work locally.
 
 `npm run move:build` requires the Sui CLI and verifies the alpha
 `move/zkpay_receipt` package.
+
+`npm run move:publish:testnet` publishes the alpha receipt package with the
+active Sui CLI account and prints `ZKPAY_BINDING_PACKAGE_ID=...` when publishing
+succeeds. It requires testnet SUI.
 
 ## Docs
 

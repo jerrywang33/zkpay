@@ -112,6 +112,10 @@ const { transaction, amountAtomic } = zkpay.buildSuiPaymentTransaction({
   }
 });</code></pre>
 <p>If the event is missing or does not match the payment intent, the verifier returns <code>binding_event_missing</code> or <code>binding_event_mismatch</code>.</p>
+<p>Build and publish the alpha package with:</p>
+<pre><code class="language-bash">npm run move:build
+npm run move:publish:testnet</code></pre>
+<p>The publish script prints <code>ZKPAY_BINDING_PACKAGE_ID=...</code> after a successful testnet publish. Use that package id in hosted checkout URLs, SDK checkout options, and <code>/payments/verify/sui</code> binding config.</p>
 </section><section><h2>Receipt Verification</h2>
 <p>After the wallet returns a transaction digest, verify it through Sui RPC:</p>
 <pre><code class="language-ts">const result = await zkpay.verifySuiPayment({
@@ -174,6 +178,8 @@ if (!result.ok) {
 <p>The repository includes a v0.2 merchant example:</p>
 <pre><code class="language-bash">npm run example:merchant</code></pre>
 <p>It creates a hosted checkout URL with Sui runtime parameters, prints the backend <code>/payments/verify/sui</code> payload, and shows where a merchant would fulfill after successful verification.</p>
+<p>With a real testnet receipt package:</p>
+<pre><code class="language-bash">ZKPAY_BINDING_PACKAGE_ID=0x... npm run example:merchant</code></pre>
 </section><section><h2>Current Boundary</h2>
 <p>v0.2 verifies settlement by digest, receiver, coin type, amount, replay store, and optional receipt binding event. The binding package in this repo is still an alpha Move prototype, not a canonical zkpay mainnet package. Production merchant systems should deploy or audit their binding package, store verified digests durably, and reject reuse before fulfillment.</p></section>
           </article>
