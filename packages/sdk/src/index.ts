@@ -8,6 +8,7 @@ import {
   verifyPaymentReceipt,
   type CreatePaymentIntentOptions,
   type GasRouteDecision,
+  type GaslessStablecoinAsset,
   type HostedCheckoutOptions,
   type PaymentIntent,
   type PaymentIntentInput,
@@ -28,12 +29,14 @@ import {
 export interface ZkpayClientOptions {
   baseUrl?: string;
   sponsorEnabled?: boolean;
+  gaslessStablecoins?: readonly GaslessStablecoinAsset[];
   sui?: SuiReceiptVerifierOptions;
 }
 
 export interface CreatePaymentOptions extends CreatePaymentIntentOptions {
   requiresProgrammableTransaction?: boolean;
   checkout?: HostedCheckoutOptions;
+  gaslessStablecoins?: readonly GaslessStablecoinAsset[];
 }
 
 export interface CreatedPayment {
@@ -46,11 +49,13 @@ export interface CreatedPayment {
 export class ZkpayClient {
   private readonly baseUrl: string;
   private readonly sponsorEnabled: boolean;
+  private readonly gaslessStablecoins?: readonly GaslessStablecoinAsset[];
   private readonly sui?: SuiReceiptVerifierOptions;
 
   constructor(options: ZkpayClientOptions = {}) {
     this.baseUrl = options.baseUrl ?? "https://zkpay.sh";
     this.sponsorEnabled = options.sponsorEnabled ?? true;
+    this.gaslessStablecoins = options.gaslessStablecoins;
     this.sui = options.sui;
   }
 
@@ -66,6 +71,11 @@ export class ZkpayClient {
       intent,
       sponsorEnabled: this.sponsorEnabled,
       requiresProgrammableTransaction,
+      network: options.checkout?.network,
+      coinType: options.checkout?.coinType,
+      decimals: options.checkout?.decimals,
+      gaslessStablecoins:
+        options.gaslessStablecoins ?? this.gaslessStablecoins,
     });
 
     return {

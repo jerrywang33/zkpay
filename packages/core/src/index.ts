@@ -17,6 +17,26 @@ export const SUPPORTED_GASLESS_STABLECOINS = [
 export type SupportedGaslessStablecoin =
   (typeof SUPPORTED_GASLESS_STABLECOINS)[number];
 
+export type HostedCheckoutNetwork = "mainnet" | "testnet" | "devnet" | "localnet";
+
+export interface GaslessStablecoinAsset {
+  symbol: string;
+  network?: HostedCheckoutNetwork;
+  coinType?: string;
+  decimals?: number;
+}
+
+export interface GaslessStablecoinLookupInput {
+  coin: string;
+  network?: HostedCheckoutNetwork;
+  coinType?: string;
+  decimals?: number;
+  registry?: readonly GaslessStablecoinAsset[];
+}
+
+export const DEFAULT_GASLESS_STABLECOIN_REGISTRY: readonly GaslessStablecoinAsset[] =
+  SUPPORTED_GASLESS_STABLECOINS.map((symbol) => ({ symbol }));
+
 export const paymentIntentIdSchema = z
   .string()
   .regex(/^zkp_[a-zA-Z0-9_-]+$/, "Expected a zkpay payment id");
@@ -56,8 +76,6 @@ export const paymentIntentSchema = paymentIntentInputSchema.extend({
 export type PaymentIntentInput = z.input<typeof paymentIntentInputSchema>;
 export type PaymentIntent = z.infer<typeof paymentIntentSchema>;
 
-export type HostedCheckoutNetwork = "mainnet" | "testnet" | "devnet" | "localnet";
-
 export interface HostedCheckoutOptions {
   network?: HostedCheckoutNetwork;
   coinType?: string;
@@ -80,6 +98,10 @@ export interface GasRoutePolicyInput {
   intent: PaymentIntent;
   requiresProgrammableTransaction?: boolean;
   sponsorEnabled?: boolean;
+  network?: HostedCheckoutNetwork;
+  coinType?: string;
+  decimals?: number;
+  gaslessStablecoins?: readonly GaslessStablecoinAsset[];
   supportedGaslessCoins?: readonly string[];
 }
 
@@ -250,9 +272,17 @@ export function isPaymentIntentExpired(
 }
 
 export function resolveGasRoute(input: GasRoutePolicyInput): GasRouteDecision {
-  const supported =
-    input.supportedGaslessCoins ?? SUPPORTED_GASLESS_STABLECOINS;
-  const isGaslessCoin = supported.includes(input.intent.coin);
+  const isGaslessCoin =
+    findGaslessStablecoinAsset({
+      coin: input.intent.coin,
+      network: input.network,
+      coinType: input.coinType,
+      decimals: input.decimals,
+      registry:
+        input.gaslessStablecoins ??
+        input.supportedGaslessCoins?.map((symbol) => ({ symbol })) ??
+        DEFAULT_GASLESS_STABLECOIN_REGISTRY,
+    }) !== null;
 
   if (isGaslessCoin && !input.requiresProgrammableTransaction) {
     return {
@@ -277,6 +307,30 @@ export function resolveGasRoute(input: GasRoutePolicyInput): GasRouteDecision {
     payerGas: "payer-paid",
     reason: "sponsor-disabled",
   };
+}
+
+export function findGaslessStablecoinAsset(
+  input: GaslessStablecoinLookupInput,
+): GaslessStablecoinAsset | null {
+  const coin = input.coin.trim();
+  const coinType = input.coinType?.trim();
+
+  if (!coin) return null;
+
+  for (const asset of input.registry ?? DEFAULT_GASLESS_STABLECOIN_REGISTRY) {
+    if (asset.network && asset.network !== input.network) continue;
+    if (asset.decimals !== undefined && input.decimals !== undefined) {
+      if (asset.decimals !== input.decimals) continue;
+    }
+    if (asset.coinType && coinType && !sameCoinType(asset.coinType, coinType)) {
+      continue;
+    }
+
+    if (asset.symbol === coin) return asset;
+    if (asset.coinType && sameCoinType(asset.coinType, coin)) return asset;
+  }
+
+  return null;
 }
 
 export function verifyPaymentReceipt(
@@ -335,6 +389,10 @@ function appendOptionalSearchParam(
 
 function toIsoString(value: Date | string): string {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
+}
+
+function sameCoinType(left: string, right: string): boolean {
+  return left.trim() === right.trim();
 }
 
 function randomToken(bytes: number): string {

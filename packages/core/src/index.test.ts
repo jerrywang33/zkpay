@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildHostedCheckoutUrl,
   createPaymentIntent,
+  findGaslessStablecoinAsset,
   formatPaymentUri,
   isPaymentIntentExpired,
   parseHostedCheckoutUrl,
@@ -136,6 +137,87 @@ describe("@zkpay/core", () => {
       payerGas: "zero",
       reason: "eligible-stablecoin-transfer",
     });
+  });
+
+  it("routes gasless stablecoin transfers with a network coin registry", () => {
+    expect(
+      resolveGasRoute({
+        intent: makeIntent({ coin: "USDC" }),
+        network: "testnet",
+        coinType: "0x2::usdc::USDC",
+        decimals: 6,
+        gaslessStablecoins: [
+          {
+            symbol: "USDC",
+            network: "testnet",
+            coinType: "0x2::usdc::USDC",
+            decimals: 6,
+          },
+        ],
+      }),
+    ).toEqual({
+      kind: "gasless-stablecoin",
+      payerGas: "zero",
+      reason: "eligible-stablecoin-transfer",
+    });
+  });
+
+  it("does not route mismatched registry entries as gasless", () => {
+    expect(
+      resolveGasRoute({
+        intent: makeIntent({ coin: "USDC" }),
+        network: "mainnet",
+        coinType: "0x2::usdc::USDC",
+        decimals: 6,
+        sponsorEnabled: true,
+        gaslessStablecoins: [
+          {
+            symbol: "USDC",
+            network: "testnet",
+            coinType: "0x2::usdc::USDC",
+            decimals: 6,
+          },
+        ],
+      }),
+    ).toEqual({
+      kind: "sponsored",
+      payerGas: "sponsored",
+      reason: "stablecoin-not-supported-for-gasless",
+    });
+  });
+
+  it("finds gasless stablecoins by symbol or coin type", () => {
+    const registry = [
+      {
+        symbol: "USDC",
+        network: "testnet" as const,
+        coinType: "0x2::usdc::USDC",
+        decimals: 6,
+      },
+    ];
+
+    expect(
+      findGaslessStablecoinAsset({
+        coin: "USDC",
+        network: "testnet",
+        registry,
+      }),
+    ).toEqual(registry[0]);
+    expect(
+      findGaslessStablecoinAsset({
+        coin: "0x2::usdc::USDC",
+        network: "testnet",
+        registry,
+      }),
+    ).toEqual(registry[0]);
+    expect(
+      findGaslessStablecoinAsset({
+        coin: "USDC",
+        network: "testnet",
+        coinType: "0x2::usdc::WRONG",
+        registry,
+      }),
+    ).toBeNull();
   });
 
   it("routes programmable checkout through sponsor when enabled", () => {

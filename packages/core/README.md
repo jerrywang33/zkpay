@@ -28,3 +28,22 @@ buildHostedCheckoutUrl("https://zkpay.sh", intent, {
   bindingPackageId: "0x...",
 });
 ```
+
+Gas routing can use a strict stablecoin registry:
+
+```ts
+resolveGasRoute({
+  intent,
+  network: "testnet",
+  coinType: "0x...::usdc::USDC",
+  decimals: 6,
+  gaslessStablecoins: [
+    {
+      symbol: "USDC",
+      network: "testnet",
+      coinType: "0x...::usdc::USDC",
+      decimals: 6,
+    },
+  ],
+});
+```

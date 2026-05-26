@@ -10,18 +10,38 @@ zkpay treats gasless payment as a route decision.
 3. Payer-paid fallback
 ```
 
-## Supported Gasless Stablecoin Symbols
+## Supported Gasless Stablecoin Registry
 
-The v0.1 model tracks the stablecoin set announced for Sui gasless stablecoin
-transfers:
+The default registry tracks the stablecoin symbols announced for Sui gasless
+stablecoin transfers:
 
 ```txt
 USDsui, SuiUSDe, AUSD, FDUSD, USDB, USDC, USDY
 ```
 
-This list should be treated as product policy, not hard protocol truth. Runtime
-eligibility should eventually be checked against Sui network capabilities and
-coin type allowlists.
+This list is product policy, not hard protocol truth. Apps can pass a stricter
+registry with `network`, `coinType`, and `decimals` when they want route
+decisions to reflect a known allowlist:
+
+```ts
+resolveGasRoute({
+  intent,
+  network: "testnet",
+  coinType: "0x...::usdc::USDC",
+  decimals: 6,
+  gaslessStablecoins: [
+    {
+      symbol: "USDC",
+      network: "testnet",
+      coinType: "0x...::usdc::USDC",
+      decimals: 6,
+    },
+  ],
+});
+```
+
+Runtime eligibility should eventually be checked against Sui network
+capabilities, Address Balances support, and coin type allowlists.
 
 ## Product Rule
 

@@ -82,6 +82,40 @@ describe("@zkpay/sdk", () => {
     expect(client.parseCheckoutUrl(payment.checkoutUrl)).toEqual(payment.intent);
   });
 
+  it("uses network coin registry inputs for gas route decisions", () => {
+    const client = new ZkpayClient({
+      gaslessStablecoins: [
+        {
+          symbol: "USDC",
+          network: "testnet",
+          coinType: "0x2::usdc::USDC",
+          decimals: 6,
+        },
+      ],
+    });
+
+    const payment = client.createPayment(
+      {
+        amount: "20",
+        coin: "USDC",
+        receiver: "0x84f",
+        label: "API credits",
+      },
+      {
+        id: "zkp_registry123",
+        nonce: "nonce_registry123",
+        now: "2026-05-25T00:00:00.000Z",
+        checkout: {
+          network: "testnet",
+          coinType: "0x2::usdc::USDC",
+          decimals: 6,
+        },
+      },
+    );
+
+    expect(payment.gasRoute.kind).toBe("gasless-stablecoin");
+  });
+
   it("verifies payment receipts through the client", () => {
     const client = new ZkpayClient();
     const payment = client.createPayment(

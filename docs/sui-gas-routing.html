@@ -45,10 +45,25 @@
 <pre><code class="language-txt">1. Eligible gasless stablecoin transfer
 2. Sponsored transaction fallback
 3. Payer-paid fallback</code></pre>
-</section><section><h2>Supported Gasless Stablecoin Symbols</h2>
-<p>The v0.1 model tracks the stablecoin set announced for Sui gasless stablecoin transfers:</p>
+</section><section><h2>Supported Gasless Stablecoin Registry</h2>
+<p>The default registry tracks the stablecoin symbols announced for Sui gasless stablecoin transfers:</p>
 <pre><code class="language-txt">USDsui, SuiUSDe, AUSD, FDUSD, USDB, USDC, USDY</code></pre>
-<p>This list should be treated as product policy, not hard protocol truth. Runtime eligibility should eventually be checked against Sui network capabilities and coin type allowlists.</p>
+<p>This list is product policy, not hard protocol truth. Apps can pass a stricter registry with <code>network</code>, <code>coinType</code>, and <code>decimals</code> when they want route decisions to reflect a known allowlist:</p>
+<pre><code class="language-ts">resolveGasRoute({
+  intent,
+  network: &quot;testnet&quot;,
+  coinType: &quot;0x...::usdc::USDC&quot;,
+  decimals: 6,
+  gaslessStablecoins: [
+    {
+      symbol: &quot;USDC&quot;,
+      network: &quot;testnet&quot;,
+      coinType: &quot;0x...::usdc::USDC&quot;,
+      decimals: 6,
+    },
+  ],
+});</code></pre>
+<p>Runtime eligibility should eventually be checked against Sui network capabilities, Address Balances support, and coin type allowlists.</p>
 </section><section><h2>Product Rule</h2>
 <p>Do not call every path gasless.</p>
 <p>If checkout requires programmable transaction logic, receipt creation, onchain <code>PaymentBound</code> binding, swap, deposit, or another extra operation, zkpay should either sponsor gas or explain why payer-paid fallback is required.</p></section>

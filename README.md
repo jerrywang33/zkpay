@@ -154,6 +154,10 @@ v0.2 can optionally append a `receipt::bind` Move call that emits `PaymentBound`
 with payer, receiver, amount, coin type, payment id, and nonce. The bundled
 verifier can require that event before producing a successful receipt.
 
+Gas routing now accepts an optional stablecoin registry with `network`,
+`coinType`, and `decimals`, so merchants can use a stricter allowlist than the
+default symbol-only policy when they know the exact Sui asset path.
+
 The API includes a pluggable Sui replay store. By default it keeps an in-process
 record of verified payment ids and transaction digests, so demos reject repeated
 settlement attempts. Production merchant backends should inject a durable store
