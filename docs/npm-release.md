@@ -38,21 +38,20 @@ available. Public installs should use `zkpay-sh/api`.
 The current alpha version is:
 
 ```txt
-0.2.0-alpha.8
+0.2.0-alpha.9
 ```
 
 It is published under the `next` dist-tag. Developer docs should use
 `zkpay-sh@next`; `latest` is not the integration target while the package is in
 alpha.
 
-`0.2.0-alpha.8` adds HMAC-signed payment intents across core, SDK, API
-verification, and hosted checkout verify payloads. `0.2.0-alpha.7` lets SDK
-clients fill hosted checkout `coinType` and `decimals` from
-`gaslessStablecoins` when payment creation only passes `network`.
-`0.2.0-alpha.6` added structured gasless stablecoin registry inputs for
-`network`, `coinType`, and `decimals`. These build on the D1 replay store,
-checkout runtime options, and optional Sui receipt binding work from earlier
-alpha releases.
+`0.2.0-alpha.9` lets the CLI create signed hosted checkout links through
+`ZKPAY_SIGNING_SECRET` or `--signing-secret`. `0.2.0-alpha.8` added HMAC-signed
+payment intents across core, SDK, API verification, and hosted checkout verify
+payloads. `0.2.0-alpha.7` lets SDK clients fill hosted checkout `coinType` and
+`decimals` from `gaslessStablecoins` when payment creation only passes
+`network`. These build on the D1 replay store, checkout runtime options, and
+optional Sui receipt binding work from earlier alpha releases.
 
 ## Local Release Flow
 
@@ -81,4 +80,5 @@ After publishing, verify both the SDK and CLI from the registry package:
 npm view zkpay-sh@next version
 npm install zkpay-sh@next
 npx zkpay link create --amount 20 --coin USDC --receiver 0x84f --label "API credits" --json
+ZKPAY_SIGNING_SECRET=merchant_secret npx zkpay link create --amount 20 --coin USDC --receiver 0x84f --json
 ```

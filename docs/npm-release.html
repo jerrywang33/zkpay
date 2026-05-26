@@ -57,9 +57,9 @@ zkpay-sh       CLI binary alias</code></pre>
 <p><code>@zkpay/api</code> remains an internal workspace package until <code>@zkpay</code> scope access is available. Public installs should use <code>zkpay-sh/api</code>.</p>
 </section><section><h2>Versioning</h2>
 <p>The current alpha version is:</p>
-<pre><code class="language-txt">0.2.0-alpha.8</code></pre>
+<pre><code class="language-txt">0.2.0-alpha.9</code></pre>
 <p>It is published under the <code>next</code> dist-tag. Developer docs should use <code>zkpay-sh@next</code>; <code>latest</code> is not the integration target while the package is in alpha.</p>
-<p><code>0.2.0-alpha.8</code> adds HMAC-signed payment intents across core, SDK, API verification, and hosted checkout verify payloads. <code>0.2.0-alpha.7</code> lets SDK clients fill hosted checkout <code>coinType</code> and <code>decimals</code> from <code>gaslessStablecoins</code> when payment creation only passes <code>network</code>. <code>0.2.0-alpha.6</code> added structured gasless stablecoin registry inputs for <code>network</code>, <code>coinType</code>, and <code>decimals</code>. These build on the D1 replay store, checkout runtime options, and optional Sui receipt binding work from earlier alpha releases.</p>
+<p><code>0.2.0-alpha.9</code> lets the CLI create signed hosted checkout links through <code>ZKPAY_SIGNING_SECRET</code> or <code>--signing-secret</code>. <code>0.2.0-alpha.8</code> added HMAC-signed payment intents across core, SDK, API verification, and hosted checkout verify payloads. <code>0.2.0-alpha.7</code> lets SDK clients fill hosted checkout <code>coinType</code> and <code>decimals</code> from <code>gaslessStablecoins</code> when payment creation only passes <code>network</code>. These build on the D1 replay store, checkout runtime options, and optional Sui receipt binding work from earlier alpha releases.</p>
 </section><section><h2>Local Release Flow</h2>
 <pre><code class="language-bash">npm install
 npm run check
@@ -72,7 +72,8 @@ NPM_TOKEN=... npm run publish:alpha</code></pre>
 <p>After publishing, verify both the SDK and CLI from the registry package:</p>
 <pre><code class="language-bash">npm view zkpay-sh@next version
 npm install zkpay-sh@next
-npx zkpay link create --amount 20 --coin USDC --receiver 0x84f --label &quot;API credits&quot; --json</code></pre></section>
+npx zkpay link create --amount 20 --coin USDC --receiver 0x84f --label &quot;API credits&quot; --json
+ZKPAY_SIGNING_SECRET=merchant_secret npx zkpay link create --amount 20 --coin USDC --receiver 0x84f --json</code></pre></section>
           </article>
         </div>
       </main>

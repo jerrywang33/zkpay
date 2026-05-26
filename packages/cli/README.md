@@ -19,6 +19,17 @@ zkpay link create \
   --json
 ```
 
+Signed hosted checkout links:
+
+```bash
+ZKPAY_SIGNING_SECRET=merchant_secret zkpay link create \
+  --amount 20 \
+  --coin USDC \
+  --receiver 0x84f \
+  --network testnet \
+  --json
+```
+
 Verify a Sui testnet receipt:
 
 ```bash

@@ -162,6 +162,12 @@ Payment intents can also be HMAC-signed before they are sent through hosted
 checkout URLs. This gives merchant backends a simple way to reject tampered
 amount, receiver, nonce, or metadata fields before fulfillment.
 
+The CLI reads `ZKPAY_SIGNING_SECRET` for signed hosted checkout links:
+
+```bash
+ZKPAY_SIGNING_SECRET=merchant_secret zkpay link create --amount 20 --coin USDC --receiver 0x84f --json
+```
+
 The API includes a pluggable Sui replay store. By default it keeps an in-process
 record of verified payment ids and transaction digests, so demos reject repeated
 settlement attempts. Production merchant backends should inject a durable store

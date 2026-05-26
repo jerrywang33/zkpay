@@ -13,6 +13,7 @@ try {
     const client = new ZkpayClient({
       baseUrl: values["base-url"] ?? "https://zkpay.sh",
       sponsorEnabled: values.sponsor !== "false",
+      signingSecret: readSigningSecret(values),
     });
     const payment = client.createPayment(
       {
@@ -160,6 +161,7 @@ function printUsage(): void {
       "  --expires-at <iso>    Optional expiry timestamp",
       "  --ptb                Mark checkout as programmable transaction",
       "  --sponsor false      Disable sponsor fallback",
+      "  --signing-secret <s> Sign hosted checkout URL; prefer ZKPAY_SIGNING_SECRET",
       "  --network <name>      Sui network for checkout or receipt verification",
       "  --coin-type <type>    Sui coin type for checkout or receipt verification",
       "  --decimals <n>        Sui coin decimals for checkout or receipt verification",
@@ -173,4 +175,8 @@ function printUsage(): void {
       "  --json               Print full payment object",
     ].join("\n"),
   );
+}
+
+function readSigningSecret(values: Record<string, string>): string | undefined {
+  return values["signing-secret"] ?? process.env.ZKPAY_SIGNING_SECRET;
 }
