@@ -62,7 +62,13 @@
     }
   },
   &quot;options&quot;: {
-    &quot;requiresProgrammableTransaction&quot;: false
+    &quot;requiresProgrammableTransaction&quot;: false,
+    &quot;checkout&quot;: {
+      &quot;network&quot;: &quot;testnet&quot;,
+      &quot;coinType&quot;: &quot;0x...::usdc::USDC&quot;,
+      &quot;decimals&quot;: 6,
+      &quot;bindingPackageId&quot;: &quot;0x...&quot;
+    }
   }
 }</code></pre>
 <p>Response:</p>
@@ -79,12 +85,12 @@
     &quot;nonce&quot;: &quot;...&quot;,
     &quot;createdAt&quot;: &quot;2026-05-25T00:00:00.000Z&quot;
   },
-  &quot;checkoutUrl&quot;: &quot;https://zkpay.sh/pay/zkp_...?intent=...&quot;,
+  &quot;checkoutUrl&quot;: &quot;https://zkpay.sh/pay/zkp_...?intent=...&amp;network=testnet&amp;coinType=0x...::usdc::USDC&amp;decimals=6&amp;bindingPackageId=0x...&quot;,
   &quot;paymentUri&quot;: &quot;zkpay://payment/zkp_...?...&quot;,
   &quot;gasRoute&quot;: {
-    &quot;kind&quot;: &quot;gasless-stablecoin&quot;,
-    &quot;payerGas&quot;: &quot;zero&quot;,
-    &quot;reason&quot;: &quot;eligible-stablecoin-transfer&quot;
+    &quot;kind&quot;: &quot;sponsored&quot;,
+    &quot;payerGas&quot;: &quot;sponsored&quot;,
+    &quot;reason&quot;: &quot;programmable-checkout-requires-sponsor&quot;
   }
 }</code></pre>
 </section><section><h2>Verify Payment</h2>

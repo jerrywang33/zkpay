@@ -56,6 +56,17 @@ export const paymentIntentSchema = paymentIntentInputSchema.extend({
 export type PaymentIntentInput = z.input<typeof paymentIntentInputSchema>;
 export type PaymentIntent = z.infer<typeof paymentIntentSchema>;
 
+export type HostedCheckoutNetwork = "mainnet" | "testnet" | "devnet" | "localnet";
+
+export interface HostedCheckoutOptions {
+  network?: HostedCheckoutNetwork;
+  coinType?: string;
+  decimals?: number;
+  rpcUrl?: string;
+  bindingPackageId?: string;
+  bindingEventType?: string;
+}
+
 export interface CreatePaymentIntentOptions {
   id?: string;
   nonce?: string;
@@ -200,9 +211,22 @@ export function decodePaymentIntentPayload(payload: string): PaymentIntent {
 export function buildHostedCheckoutUrl(
   baseUrl: string,
   intent: PaymentIntent,
+  options: HostedCheckoutOptions = {},
 ): string {
   const url = new URL(`/pay/${encodeURIComponent(intent.id)}`, baseUrl);
   url.searchParams.set("intent", encodePaymentIntentPayload(intent));
+
+  appendOptionalSearchParam(url, "network", options.network);
+  appendOptionalSearchParam(url, "coinType", options.coinType);
+
+  if (options.decimals !== undefined) {
+    url.searchParams.set("decimals", String(options.decimals));
+  }
+
+  appendOptionalSearchParam(url, "rpcUrl", options.rpcUrl);
+  appendOptionalSearchParam(url, "bindingPackageId", options.bindingPackageId);
+  appendOptionalSearchParam(url, "bindingEventType", options.bindingEventType);
+
   return url.toString();
 }
 
@@ -297,6 +321,16 @@ function requiredSearchParam(url: URL, key: string): string {
   const value = url.searchParams.get(key);
   if (!value) throw new Error(`Missing ${key} in payment URI`);
   return value;
+}
+
+function appendOptionalSearchParam(
+  url: URL,
+  key: string,
+  value: string | undefined,
+): void {
+  if (value?.trim()) {
+    url.searchParams.set(key, value.trim());
+  }
 }
 
 function toIsoString(value: Date | string): string {

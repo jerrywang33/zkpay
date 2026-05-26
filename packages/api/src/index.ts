@@ -18,6 +18,18 @@ const createPaymentRequestSchema = z.object({
   options: z
     .object({
       requiresProgrammableTransaction: z.boolean().optional(),
+      checkout: z
+        .object({
+          network: z
+            .enum(["mainnet", "testnet", "devnet", "localnet"])
+            .optional(),
+          coinType: z.string().min(1).optional(),
+          decimals: z.number().int().nonnegative().optional(),
+          rpcUrl: z.string().min(1).optional(),
+          bindingPackageId: z.string().min(1).optional(),
+          bindingEventType: z.string().min(1).optional(),
+        })
+        .optional(),
     })
     .default({}),
 });

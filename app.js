@@ -187,8 +187,8 @@ function render() {
               <code>npm install zkpay-sh@next</code>
             </button>
             <div class="release-note">
-              <span>0.2.0-alpha.2</span>
-              <span>SDK transactions can now bind zkpay payment ids onchain with a receipt event.</span>
+              <span>0.2.0-alpha.3</span>
+              <span>SDK, API, and CLI can now generate hosted checkout links with Sui runtime parameters.</span>
             </div>
           </div>
 
@@ -314,6 +314,13 @@ const payment = zkpay.createPayment({
   coin: "USDC",
   receiver: "0x84f",
   label: "API credits"
+}, {
+  checkout: {
+    network: "testnet",
+    coinType: "0x...::usdc::USDC",
+    decimals: 6,
+    bindingPackageId: "0x..."
+  }
 });
 
 const built = zkpay.buildSuiPaymentTransaction({

@@ -47,6 +47,41 @@ describe("@zkpay/sdk", () => {
     expect(client.parsePaymentUri(payment.paymentUri)).toEqual(payment.intent);
   });
 
+  it("creates Sui checkout URLs with runtime parameters", () => {
+    const client = new ZkpayClient({
+      baseUrl: "https://checkout.zkpay.local",
+    });
+
+    const payment = client.createPayment(
+      {
+        amount: "20",
+        coin: "USDC",
+        receiver: "0x84f",
+        label: "API credits",
+      },
+      {
+        id: "zkp_sui_url123",
+        nonce: "nonce_sui_url123",
+        now: "2026-05-25T00:00:00.000Z",
+        checkout: {
+          network: "testnet",
+          coinType: "0x2::usdc::USDC",
+          decimals: 6,
+          bindingPackageId: "0xabc",
+        },
+      },
+    );
+    const checkoutUrl = new URL(payment.checkoutUrl);
+
+    expect(checkoutUrl.searchParams.get("network")).toBe("testnet");
+    expect(checkoutUrl.searchParams.get("coinType")).toBe("0x2::usdc::USDC");
+    expect(checkoutUrl.searchParams.get("decimals")).toBe("6");
+    expect(checkoutUrl.searchParams.get("bindingPackageId")).toBe("0xabc");
+    expect(payment.gasRoute.kind).toBe("sponsored");
+    expect(payment.gasRoute.reason).toBe("programmable-checkout-requires-sponsor");
+    expect(client.parseCheckoutUrl(payment.checkoutUrl)).toEqual(payment.intent);
+  });
+
   it("verifies payment receipts through the client", () => {
     const client = new ZkpayClient();
     const payment = client.createPayment(

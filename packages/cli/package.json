@@ -1,6 +1,6 @@
 {
   "name": "@zkpay/cli",
-  "version": "0.2.0-alpha.2",
+  "version": "0.2.0-alpha.3",
   "description": "Command line tools for creating zkpay payment links.",
   "type": "module",
   "license": "MIT",
@@ -27,6 +27,6 @@
     "access": "public"
   },
   "dependencies": {
-    "@zkpay/sdk": "0.2.0-alpha.2"
+    "@zkpay/sdk": "0.2.0-alpha.3"
   }
 }

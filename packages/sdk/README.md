@@ -21,6 +21,13 @@ const payment = zkpay.createPayment({
   metadata: {
     orderId: "ord_123",
   },
+}, {
+  checkout: {
+    network: "testnet",
+    coinType: "0x...::usdc::USDC",
+    decimals: 6,
+    bindingPackageId: "0x...",
+  },
 });
 
 console.log(payment.checkoutUrl);

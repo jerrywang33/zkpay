@@ -37,16 +37,16 @@ publish target.
 The current alpha version is:
 
 ```txt
-0.2.0-alpha.2
+0.2.0-alpha.3
 ```
 
 It is published under the `next` dist-tag. Developer docs should use
 `zkpay-sh@next`; `latest` is not the integration target while the package is in
 alpha.
 
-`0.2.0-alpha.2` adds optional Sui receipt binding support: SDK transactions can
-append `receipt::bind`, hosted checkout can include `bindingPackageId`, and the
-SDK/API/CLI verifiers can require the emitted `PaymentBound` event.
+`0.2.0-alpha.3` adds first-class checkout URL runtime options across SDK, API,
+and CLI, building on the optional Sui receipt binding support from
+`0.2.0-alpha.2`.
 
 ## Local Release Flow
 

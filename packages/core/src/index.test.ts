@@ -94,6 +94,31 @@ describe("@zkpay/core", () => {
     expect(parseHostedCheckoutUrl(checkoutUrl)).toEqual(intent);
   });
 
+  it("adds Sui checkout runtime parameters to hosted checkout URLs", () => {
+    const intent = makeIntent();
+    const checkoutUrl = buildHostedCheckoutUrl("https://zkpay.sh", intent, {
+      network: "testnet",
+      coinType: "0x2::usdc::USDC",
+      decimals: 6,
+      rpcUrl: "https://fullnode.testnet.sui.io",
+      bindingPackageId: "0xabc",
+      bindingEventType: "0xabc::receipt::PaymentBound",
+    });
+    const url = new URL(checkoutUrl);
+
+    expect(parseHostedCheckoutUrl(checkoutUrl)).toEqual(intent);
+    expect(url.searchParams.get("network")).toBe("testnet");
+    expect(url.searchParams.get("coinType")).toBe("0x2::usdc::USDC");
+    expect(url.searchParams.get("decimals")).toBe("6");
+    expect(url.searchParams.get("rpcUrl")).toBe(
+      "https://fullnode.testnet.sui.io",
+    );
+    expect(url.searchParams.get("bindingPackageId")).toBe("0xabc");
+    expect(url.searchParams.get("bindingEventType")).toBe(
+      "0xabc::receipt::PaymentBound",
+    );
+  });
+
   it("detects expired payment intents", () => {
     const intent = makeIntent();
 

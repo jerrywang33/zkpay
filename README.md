@@ -121,6 +121,21 @@ page connects a Wallet Standard Sui wallet, submits the stablecoin transfer,
 captures the transaction digest, and emits the JSON payload a merchant backend
 can send to `/payments/verify/sui`.
 
+SDK, API, and CLI payment creation can attach checkout runtime parameters so
+developers do not hand-write `coinType`, `decimals`, or `bindingPackageId` query
+strings:
+
+```ts
+const payment = zkpay.createPayment(input, {
+  checkout: {
+    network: "testnet",
+    coinType: "0x...::usdc::USDC",
+    decimals: 6,
+    bindingPackageId: "0x..."
+  }
+});
+```
+
 v0.2 can optionally append a `receipt::bind` Move call that emits `PaymentBound`
 with payer, receiver, amount, coin type, payment id, and nonce. The bundled
 verifier can require that event before producing a successful receipt.

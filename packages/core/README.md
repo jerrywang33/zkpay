@@ -8,6 +8,7 @@ npm install zkpay-sh@next
 
 ```ts
 import {
+  buildHostedCheckoutUrl,
   createPaymentIntent,
   resolveGasRoute,
   verifyPaymentReceipt,
@@ -16,3 +17,14 @@ import {
 
 This alpha package defines the model layer: `PaymentIntent`, hosted checkout
 payloads, gas route decisions, and deterministic receipt verification.
+
+`buildHostedCheckoutUrl` also accepts Sui checkout runtime parameters:
+
+```ts
+buildHostedCheckoutUrl("https://zkpay.sh", intent, {
+  network: "testnet",
+  coinType: "0x...::usdc::USDC",
+  decimals: 6,
+  bindingPackageId: "0x...",
+});
+```

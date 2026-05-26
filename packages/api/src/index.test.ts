@@ -33,6 +33,42 @@ describe("@zkpay/api", () => {
     expect(json.gasRoute.kind).toBe("gasless-stablecoin");
   });
 
+  it("creates Sui checkout URLs with runtime options", async () => {
+    const app = createZkpayApi({
+      baseUrl: "https://zkpay.sh",
+    });
+
+    const response = await app.request("/payments", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        payment: {
+          amount: "20",
+          coin: "USDC",
+          receiver: "0x84f",
+          label: "API credits",
+        },
+        options: {
+          checkout: {
+            network: "testnet",
+            coinType: "0x2::usdc::USDC",
+            decimals: 6,
+            bindingPackageId: "0xabc",
+          },
+        },
+      }),
+    });
+    const json = await response.json();
+    const checkoutUrl = new URL(json.checkoutUrl);
+
+    expect(response.status).toBe(201);
+    expect(checkoutUrl.searchParams.get("coinType")).toBe("0x2::usdc::USDC");
+    expect(checkoutUrl.searchParams.get("bindingPackageId")).toBe("0xabc");
+    expect(json.gasRoute.kind).toBe("sponsored");
+  });
+
   it("verifies receipts through the HTTP boundary", async () => {
     const app = createZkpayApi();
     const createResponse = await app.request("/payments", {

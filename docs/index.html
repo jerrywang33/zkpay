@@ -77,6 +77,13 @@ const payment = zkpay.createPayment({
   coin: "USDC",
   receiver: "0x84f",
   label: "API credits"
+}, {
+  checkout: {
+    network: "testnet",
+    coinType: "0x...::usdc::USDC",
+    decimals: 6,
+    bindingPackageId: "0x..."
+  }
 });</code></pre>
             </section>
 

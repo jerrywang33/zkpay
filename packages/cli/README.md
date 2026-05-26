@@ -12,6 +12,10 @@ zkpay link create \
   --coin USDC \
   --receiver 0x84f \
   --label "API credits" \
+  --network testnet \
+  --coin-type 0x...::usdc::USDC \
+  --decimals 6 \
+  --binding-package-id 0x... \
   --json
 ```
 

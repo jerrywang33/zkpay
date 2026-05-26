@@ -8,6 +8,7 @@ import {
   verifyPaymentReceipt,
   type CreatePaymentIntentOptions,
   type GasRouteDecision,
+  type HostedCheckoutOptions,
   type PaymentIntent,
   type PaymentIntentInput,
   type PaymentReceipt,
@@ -32,6 +33,7 @@ export interface ZkpayClientOptions {
 
 export interface CreatePaymentOptions extends CreatePaymentIntentOptions {
   requiresProgrammableTransaction?: boolean;
+  checkout?: HostedCheckoutOptions;
 }
 
 export interface CreatedPayment {
@@ -57,15 +59,18 @@ export class ZkpayClient {
     options: CreatePaymentOptions = {},
   ): CreatedPayment {
     const intent = createPaymentIntent(input, options);
+    const requiresProgrammableTransaction = Boolean(
+      options.requiresProgrammableTransaction || options.checkout?.bindingPackageId,
+    );
     const gasRoute = resolveGasRoute({
       intent,
       sponsorEnabled: this.sponsorEnabled,
-      requiresProgrammableTransaction: options.requiresProgrammableTransaction,
+      requiresProgrammableTransaction,
     });
 
     return {
       intent,
-      checkoutUrl: buildHostedCheckoutUrl(this.baseUrl, intent),
+      checkoutUrl: buildHostedCheckoutUrl(this.baseUrl, intent, options.checkout),
       paymentUri: formatPaymentUri(intent),
       gasRoute,
     };

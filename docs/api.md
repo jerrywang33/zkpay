@@ -39,7 +39,13 @@ Request:
     }
   },
   "options": {
-    "requiresProgrammableTransaction": false
+    "requiresProgrammableTransaction": false,
+    "checkout": {
+      "network": "testnet",
+      "coinType": "0x...::usdc::USDC",
+      "decimals": 6,
+      "bindingPackageId": "0x..."
+    }
   }
 }
 ```
@@ -60,12 +66,12 @@ Response:
     "nonce": "...",
     "createdAt": "2026-05-25T00:00:00.000Z"
   },
-  "checkoutUrl": "https://zkpay.sh/pay/zkp_...?intent=...",
+  "checkoutUrl": "https://zkpay.sh/pay/zkp_...?intent=...&network=testnet&coinType=0x...::usdc::USDC&decimals=6&bindingPackageId=0x...",
   "paymentUri": "zkpay://payment/zkp_...?...",
   "gasRoute": {
-    "kind": "gasless-stablecoin",
-    "payerGas": "zero",
-    "reason": "eligible-stablecoin-transfer"
+    "kind": "sponsored",
+    "payerGas": "sponsored",
+    "reason": "programmable-checkout-requires-sponsor"
   }
 }
 ```

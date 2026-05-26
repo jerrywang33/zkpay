@@ -19,5 +19,9 @@ The same route can require an onchain zkpay receipt event by passing
 `binding.packageId`. When present, verification fails unless `PaymentBound`
 matches the payer, receiver, amount, coin type, payment id, and nonce.
 
+`POST /payments` also accepts `options.checkout` so merchant backends can
+generate hosted checkout URLs with `network`, `coinType`, `decimals`, and
+`bindingPackageId` already attached.
+
 This package is part of the workspace build. Public installs currently use the
 bundled `zkpay-sh` package until `@zkpay` npm scope access is available.

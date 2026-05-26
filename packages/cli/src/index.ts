@@ -25,6 +25,7 @@ try {
       },
       {
         requiresProgrammableTransaction: values.ptb === "true",
+        checkout: buildCheckoutOptions(values),
       },
     );
 
@@ -124,6 +125,27 @@ function parseIntent(value: string | undefined) {
   return JSON.parse(raw);
 }
 
+function buildCheckoutOptions(values: Record<string, string>) {
+  const hasCheckoutOptions =
+    values.network ||
+    values["coin-type"] ||
+    values.decimals ||
+    values["rpc-url"] ||
+    values["binding-package-id"] ||
+    values["binding-event-type"];
+
+  if (!hasCheckoutOptions) return undefined;
+
+  return {
+    network: values.network as "mainnet" | "testnet" | "devnet" | "localnet",
+    coinType: values["coin-type"],
+    decimals: values.decimals ? Number(values.decimals) : undefined,
+    rpcUrl: values["rpc-url"],
+    bindingPackageId: values["binding-package-id"],
+    bindingEventType: values["binding-event-type"],
+  };
+}
+
 function printUsage(): void {
   console.error(
     [
@@ -138,7 +160,9 @@ function printUsage(): void {
       "  --expires-at <iso>    Optional expiry timestamp",
       "  --ptb                Mark checkout as programmable transaction",
       "  --sponsor false      Disable sponsor fallback",
-      "  --network <name>      Sui network for receipt verification",
+      "  --network <name>      Sui network for checkout or receipt verification",
+      "  --coin-type <type>    Sui coin type for checkout or receipt verification",
+      "  --decimals <n>        Sui coin decimals for checkout or receipt verification",
       "  --rpc-url <url>       Override Sui RPC URL",
       "  --sender <address>    Expected payer address",
       "  --amount-policy <x>   exact or at-least",

@@ -69,8 +69,8 @@ const { transaction, amountAtomic } = zkpay.buildSuiPaymentTransaction({
 <p>The returned <code>transaction</code> is a Sui TypeScript SDK <code>Transaction</code> that a wallet adapter can sign and execute on testnet.</p>
 </section><section><h2>Hosted Checkout Handoff</h2>
 <p>The hosted checkout route now loads a browser wallet runtime:</p>
-<pre><code class="language-txt">/pay/:paymentId?intent=...&amp;network=testnet&amp;coinType=0x...::usdc::USDC&amp;decimals=6</code></pre>
-<p>The page detects Wallet Standard Sui wallets, asks the payer to connect, submits a stablecoin transfer, captures the returned transaction digest, and then verifies receiver balance changes through Sui RPC.</p>
+<pre><code class="language-txt">/pay/:paymentId?intent=...&amp;network=testnet&amp;coinType=0x...::usdc::USDC&amp;decimals=6&amp;bindingPackageId=0x...</code></pre>
+<p>SDK, API, and CLI payment creation can attach the Sui checkout parameters for <code>network</code>, <code>coinType</code>, <code>decimals</code>, <code>rpcUrl</code>, <code>bindingPackageId</code>, and <code>bindingEventType</code>. The page detects Wallet Standard Sui wallets, asks the payer to connect, submits a stablecoin transfer, captures the returned transaction digest, and then verifies receiver balance changes through Sui RPC.</p>
 <p>After a digest is available, checkout renders the backend verification payload:</p>
 <pre><code class="language-json">{
   &quot;intent&quot;: {},
