@@ -116,6 +116,9 @@ const { transaction, amountAtomic } = zkpay.buildSuiPaymentTransaction({
 <pre><code class="language-bash">npm run move:build
 npm run move:publish:testnet</code></pre>
 <p>The publish script prints <code>ZKPAY_BINDING_PACKAGE_ID=...</code> after a successful testnet publish. Use that package id in hosted checkout URLs, SDK checkout options, and <code>/payments/verify/sui</code> binding config.</p>
+<p>Use dry-run mode to verify the package path and Sui RPC access without spending gas:</p>
+<pre><code class="language-bash">ZKPAY_RECEIPT_DRY_RUN=true npm run move:publish:testnet</code></pre>
+<p>Dry-run mode prints <code>ZKPAY_DRY_RUN_BINDING_PACKAGE_ID=...</code>; only real publishes print <code>ZKPAY_BINDING_PACKAGE_ID=...</code>.</p>
 </section><section><h2>Receipt Verification</h2>
 <p>After the wallet returns a transaction digest, verify it through Sui RPC:</p>
 <pre><code class="language-ts">const result = await zkpay.verifySuiPayment({

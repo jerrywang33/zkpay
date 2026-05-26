@@ -42,5 +42,14 @@ npm run move:publish:testnet
 ZKPAY_RECEIPT_GAS_BUDGET=200000000 npm run move:publish:testnet
 ```
 
+Check the publish path without spending gas:
+
+```bash
+ZKPAY_RECEIPT_DRY_RUN=true npm run move:publish:testnet
+```
+
+Dry runs print `ZKPAY_DRY_RUN_BINDING_PACKAGE_ID=...`; real publishes print
+`ZKPAY_BINDING_PACKAGE_ID=...`.
+
 This is not yet a canonical zkpay mainnet package. Production users should
 audit and deploy their own package until a canonical package is published.

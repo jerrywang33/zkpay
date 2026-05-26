@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 
 const packagePath = process.env.ZKPAY_RECEIPT_PACKAGE_PATH ?? "move/zkpay_receipt";
 const gasBudget = process.env.ZKPAY_RECEIPT_GAS_BUDGET ?? "100000000";
@@ -19,6 +20,7 @@ if (dryRun && !args.includes("--dry-run")) {
 }
 
 const child = spawn("sui", args, {
+  env: withCertificateEnv(process.env),
   stdio: ["ignore", "pipe", "pipe"],
 });
 
@@ -45,19 +47,27 @@ child.on("exit", (code) => {
 
   if (stdout.trim()) {
     process.stdout.write(`${stdout.trim()}\n`);
-    printPublishedPackageId(stdout);
+    printPublishedPackageId(stdout, { dryRun });
   }
 
   process.exit(code ?? 1);
 });
 
-function printPublishedPackageId(output) {
+function printPublishedPackageId(output, options = {}) {
   try {
     const parsed = JSON.parse(output);
     const packageId = findPublishedPackageId(parsed);
 
     if (packageId) {
-      process.stderr.write(`\nZKPAY_BINDING_PACKAGE_ID=${packageId}\n`);
+      const variableName = options.dryRun
+        ? "ZKPAY_DRY_RUN_BINDING_PACKAGE_ID"
+        : "ZKPAY_BINDING_PACKAGE_ID";
+
+      process.stderr.write(`\n${variableName}=${packageId}\n`);
+
+      if (options.dryRun) {
+        process.stderr.write("Dry-run only; package was not published.\n");
+      }
     }
   } catch {
     // Sui already printed the useful error/output. Keep the wrapper quiet.
@@ -87,4 +97,24 @@ function findPublishedPackageId(value) {
   }
 
   return null;
+}
+
+function withCertificateEnv(env) {
+  if (env.SSL_CERT_FILE || env.NATIVE_TLS_CERT_FILE) {
+    return env;
+  }
+
+  const certFile = [
+    "/etc/ssl/cert.pem",
+    "/opt/homebrew/etc/openssl@3/cert.pem",
+    "/opt/homebrew/etc/ca-certificates/cert.pem",
+  ].find((path) => existsSync(path));
+
+  if (!certFile) return env;
+
+  return {
+    ...env,
+    SSL_CERT_FILE: certFile,
+    NATIVE_TLS_CERT_FILE: certFile,
+  };
 }

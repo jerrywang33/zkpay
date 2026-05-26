@@ -62,6 +62,10 @@ fallback, so generated URLs like `/pay/zkp_...?intent=...` work locally.
 active Sui CLI account and prints `ZKPAY_BINDING_PACKAGE_ID=...` when publishing
 succeeds. It requires testnet SUI.
 
+Use `ZKPAY_RECEIPT_DRY_RUN=true npm run move:publish:testnet` to verify the
+publish path without spending gas. Dry runs print
+`ZKPAY_DRY_RUN_BINDING_PACKAGE_ID=...`.
+
 ## Docs
 
 ```bash
