@@ -179,8 +179,16 @@ function render() {
               sponsored gas fallback, and verifiable receipts.
             </p>
             <div class="hero-actions">
-              <a class="primary-action" href="#developers">Start building</a>
-              <a class="secondary-action" href="#flow">See the flow</a>
+              <a class="primary-action" href="#developers">Install alpha</a>
+              <a class="secondary-action" href="/docs/">Read docs</a>
+            </div>
+            <button class="install-command" type="button" data-copy="npm install zkpay-sh@next">
+              <span>npm install</span>
+              <code>npm install zkpay-sh@next</code>
+            </button>
+            <div class="release-note">
+              <span>0.1.0-alpha.0</span>
+              <span>SDK, core primitives, and CLI are available in one public package.</span>
             </div>
           </div>
 
@@ -278,34 +286,48 @@ function render() {
         <section class="developer-section" id="developers">
           <div class="developer-copy">
             <p class="eyebrow">Developer surface</p>
-            <h2>Create a payment. Send the user to checkout. Verify the receipt.</h2>
+            <h2>Install one package. Create a payment. Verify the receipt.</h2>
             <p>
-              Start with payment links and a server-side verification API.
-              Keep custody, fulfillment, and business logic in the merchant app.
+              The public alpha is live as <strong>zkpay-sh@next</strong>. It bundles the
+              SDK, core primitives, and CLI while the internal workspace keeps
+              API, checkout, and verification boundaries clear.
             </p>
           </div>
           <div class="code-stack">
             <article class="code-panel">
               <div class="code-head">
-                <span>Create payment</span>
-                <button type="button" data-copy="zkpay link create --amount 20 --coin USDC --receiver 0x...">Copy</button>
+                <span>Install</span>
+                <button type="button" data-copy="npm install zkpay-sh@next">Copy</button>
               </div>
-              <pre><code>zkpay link create
-  --amount 20
-  --coin USDC
-  --receiver 0x...
-  --label "API credits"</code></pre>
+              <pre><code>npm install zkpay-sh@next
+npm install -g zkpay-sh@next</code></pre>
             </article>
             <article class="code-panel">
               <div class="code-head">
-                <span>Verify receipt</span>
-                <button type="button" data-copy="await zkpay.verifyPayment('zkp_123')">Copy</button>
+                <span>SDK</span>
+                <button type="button" data-copy="import { ZkpayClient } from 'zkpay-sh';">Copy</button>
               </div>
-              <pre><code>const receipt = await zkpay.verifyPayment("zkp_123");
+              <pre><code>import { ZkpayClient } from "zkpay-sh";
 
-if (receipt.status === "succeeded") {
-  await fulfillOrder(receipt.orderId);
-}</code></pre>
+const zkpay = new ZkpayClient();
+const payment = zkpay.createPayment({
+  amount: "20",
+  coin: "USDC",
+  receiver: "0x84f",
+  label: "API credits"
+});</code></pre>
+            </article>
+            <article class="code-panel">
+              <div class="code-head">
+                <span>CLI</span>
+                <button type="button" data-copy="zkpay link create --amount 20 --coin USDC --receiver 0x84f --label &quot;API credits&quot; --json">Copy</button>
+              </div>
+              <pre><code>zkpay link create \
+  --amount 20 \
+  --coin USDC \
+  --receiver 0x84f \
+  --label "API credits" \
+  --json</code></pre>
             </article>
           </div>
         </section>
@@ -344,7 +366,7 @@ if (receipt.status === "succeeded") {
               settle on Sui, and verify the receipt.
             </p>
           </div>
-          <a class="primary-action" href="#developers">Build the first flow</a>
+          <a class="primary-action" href="/docs/npm-release.html">Install zkpay-sh</a>
         </section>
       </main>
 

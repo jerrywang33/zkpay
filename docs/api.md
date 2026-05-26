@@ -1,7 +1,8 @@
 # zkpay API
 
-The first API package is intentionally thin. It wraps `@zkpay/sdk` with Hono and
-keeps the product boundary explicit.
+The first API package is intentionally thin. It wraps the workspace SDK with
+Hono and keeps the product boundary explicit. For public installs, use
+`zkpay-sh` or `zkpay-sh/sdk`.
 
 ## Health
 

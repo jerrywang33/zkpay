@@ -60,6 +60,8 @@ a {
 .brand,
 .nav,
 .hero-actions,
+.install-command,
+.release-note,
 .preview-head,
 .merchant-line,
 .receipt-strip,
@@ -231,6 +233,54 @@ h3 {
 .secondary-action {
   color: var(--ink);
   background: #ffffff;
+}
+
+.install-command {
+  width: min(520px, 100%);
+  min-height: 54px;
+  justify-content: space-between;
+  gap: 18px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  margin-top: 18px;
+  padding: 0 18px;
+  color: var(--ink);
+  background: var(--paper);
+  cursor: pointer;
+}
+
+.install-command span {
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.install-command code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+}
+
+.release-note {
+  max-width: 620px;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.release-note span:first-child {
+  flex: none;
+  border: 1px solid rgba(8, 120, 201, 0.24);
+  border-radius: 999px;
+  padding: 3px 8px;
+  color: var(--blue);
+  background: var(--blue-soft);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
 }
 
 .checkout-preview,
@@ -548,6 +598,10 @@ h3 {
 .final-section p {
   margin-bottom: 0;
   font-size: 18px;
+}
+
+.developer-copy strong {
+  color: var(--ink);
 }
 
 .primitive-list {
@@ -875,6 +929,13 @@ code {
   .usecase-grid article {
     min-height: auto;
     padding: 24px;
+  }
+
+  .install-command,
+  .release-note {
+    align-items: flex-start;
+    flex-direction: column;
+    justify-content: center;
   }
 
   .preview-head {

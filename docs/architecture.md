@@ -16,6 +16,9 @@ PaymentIntent -> Authorization -> GasRouteDecision -> PaymentReceipt -> Verifica
 | `@zkpay/cli` | Early command surface for payment links and scripts. |
 | `zkpay-sh` | Public npm package bundling the core, SDK, and CLI outputs. |
 
+Public consumers should install `zkpay-sh@next`. The scoped packages remain
+workspace boundaries until `@zkpay` npm scope access is available.
+
 ## Surfaces
 
 ### Merchant backend

@@ -11,6 +11,13 @@ zkpay-sh
 The package bundles the workspace core, SDK, and CLI outputs so developers can
 install one package while the `@zkpay` npm scope is reserved.
 
+Install it with:
+
+```bash
+npm install zkpay-sh@next
+npm install -g zkpay-sh@next
+```
+
 ```txt
 zkpay-sh       main SDK export
 zkpay-sh/core  core payment model and verification primitives
@@ -52,3 +59,13 @@ The `@zkpay/core` and `@zkpay/sdk` package names already exist on npm. Publishin
 under the `@zkpay` scope requires maintainer access to that npm scope. Until that
 access is available, `zkpay-sh` is the public install path and the scoped
 packages remain internal workspace boundaries.
+
+## Published Verification
+
+After publishing, verify both the SDK and CLI from the registry package:
+
+```bash
+npm view zkpay-sh@next version
+npm install zkpay-sh@next
+npx zkpay link create --amount 20 --coin USDC --receiver 0x84f --label "API credits" --json
+```

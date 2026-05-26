@@ -29,7 +29,7 @@
         <p class="eyebrow">zkpay docs</p>
         <h1>Stablecoin checkout infrastructure for Sui apps.</h1>
         <p class="lede">
-          zkpay starts with one developer loop: create a payment intent, send
+          zkpay starts with one developer loop: install the alpha package, create a payment intent, send
           the payer to hosted checkout, route gas clearly, and verify the
           receipt before fulfillment.
         </p>
@@ -37,6 +37,7 @@
         <div class="docs-layout">
           <aside class="side-nav">
             <a href="#quickstart">Quickstart</a>
+            <a href="#install">Install</a>
             <a href="#model">Payment model</a>
             <a href="#guides">Guides</a>
             <a href="#api">API</a>
@@ -54,6 +55,25 @@
               </p>
               <pre><code>npm install zkpay-sh@next
 zkpay link create --amount 20 --coin USDC --receiver 0x84f --json</code></pre>
+            </section>
+
+            <section id="install">
+              <h2>Install</h2>
+              <p>
+                The public alpha package bundles the SDK, core primitives, and
+                CLI. Use the <code>@next</code> tag while the package is still in alpha.
+              </p>
+              <pre><code>npm install zkpay-sh@next
+npm install -g zkpay-sh@next</code></pre>
+              <pre><code>import { ZkpayClient } from "zkpay-sh";
+
+const zkpay = new ZkpayClient();
+const payment = zkpay.createPayment({
+  amount: "20",
+  coin: "USDC",
+  receiver: "0x84f",
+  label: "API credits"
+});</code></pre>
             </section>
 
             <section id="model">

@@ -43,7 +43,20 @@
 <pre><code class="language-txt">PaymentIntent -&gt; Checkout Authorization -&gt; Gas Route -&gt; Settlement Receipt</code></pre>
 <p>The first useful version is complete when a merchant can create a stablecoin payment link, a payer can authorize the payment, and the merchant backend can verify the receipt before fulfillment.</p>
 <p>The current implementation covers the model, SDK, CLI, API boundary, generated checkout URL, and hosted checkout shell. Real Sui transaction building and zkLogin proof execution remain the next integration layer.</p></section>
-<section><h2>PaymentIntent</h2>
+<section><h2>Public Alpha</h2>
+<p>The current public install path is the <code>zkpay-sh</code> npm package:</p>
+<pre><code class="language-bash">npm install zkpay-sh@next</code></pre>
+<p>It bundles the SDK, core primitives, and CLI:</p>
+<pre><code class="language-ts">import { ZkpayClient } from &quot;zkpay-sh&quot;;
+
+const zkpay = new ZkpayClient();
+const payment = zkpay.createPayment({
+  amount: &quot;20&quot;,
+  coin: &quot;USDC&quot;,
+  receiver: &quot;0x84f&quot;,
+  label: &quot;API credits&quot;
+});</code></pre>
+</section><section><h2>PaymentIntent</h2>
 <p>A <code>PaymentIntent</code> is the contract between merchant UI, hosted checkout, and backend verification.</p>
 <p>Required fields:</p>
 <ul>

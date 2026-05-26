@@ -43,6 +43,9 @@
 <section><h2>Target Package</h2>
 <pre><code class="language-txt">zkpay-sh</code></pre>
 <p>The package bundles the workspace core, SDK, and CLI outputs so developers can install one package while the <code>@zkpay</code> npm scope is reserved.</p>
+<p>Install it with:</p>
+<pre><code class="language-bash">npm install zkpay-sh@next
+npm install -g zkpay-sh@next</code></pre>
 <pre><code class="language-txt">zkpay-sh       main SDK export
 zkpay-sh/core  core payment model and verification primitives
 zkpay-sh/sdk   SDK export
@@ -60,7 +63,12 @@ npm run pack:check
 NPM_TOKEN=... npm run publish:alpha</code></pre>
 <p>The publish script writes a temporary npm config under <code>.npm-cache/</code>, publishes in dependency order, then removes the temporary config.</p>
 </section><section><h2>Scope Plan</h2>
-<p>The <code>@zkpay/core</code> and <code>@zkpay/sdk</code> package names already exist on npm. Publishing under the <code>@zkpay</code> scope requires maintainer access to that npm scope. Until that access is available, <code>zkpay-sh</code> is the public install path and the scoped packages remain internal workspace boundaries.</p></section>
+<p>The <code>@zkpay/core</code> and <code>@zkpay/sdk</code> package names already exist on npm. Publishing under the <code>@zkpay</code> scope requires maintainer access to that npm scope. Until that access is available, <code>zkpay-sh</code> is the public install path and the scoped packages remain internal workspace boundaries.</p>
+</section><section><h2>Published Verification</h2>
+<p>After publishing, verify both the SDK and CLI from the registry package:</p>
+<pre><code class="language-bash">npm view zkpay-sh@next version
+npm install zkpay-sh@next
+npx zkpay link create --amount 20 --coin USDC --receiver 0x84f --label &quot;API credits&quot; --json</code></pre></section>
           </article>
         </div>
       </main>
