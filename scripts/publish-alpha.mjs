@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 
-const packages = ["@zkpay/core", "@zkpay/sdk", "@zkpay/cli"];
+const packages = ["zkpay-sh"];
 const token = process.env.NODE_AUTH_TOKEN ?? process.env.NPM_TOKEN;
 const npmrcPath = join(".npm-cache", "publish.npmrc");
 
@@ -37,7 +37,7 @@ try {
       continue;
     }
 
-    run("npm", [
+    const publishArgs = [
       "publish",
       "--userconfig",
       npmrcPath,
@@ -47,9 +47,13 @@ try {
       packageName,
       "--tag",
       "next",
-      "--access",
-      "public",
-    ]);
+    ];
+
+    if (packageName.startsWith("@")) {
+      publishArgs.push("--access", "public");
+    }
+
+    run("npm", publishArgs);
   }
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
@@ -61,12 +65,18 @@ try {
 process.exit(exitCode);
 
 function readWorkspaceVersion(packageName) {
-  const workspace = packageName.replace("@zkpay/", "");
+  const workspace = workspaceDirectory(packageName);
   const manifest = JSON.parse(
     readFileSync(join("packages", workspace, "package.json"), "utf8"),
   );
 
   return manifest.version;
+}
+
+function workspaceDirectory(packageName) {
+  return packageName.startsWith("@zkpay/")
+    ? packageName.replace("@zkpay/", "")
+    : packageName;
 }
 
 function versionExists(packageName, version) {

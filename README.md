@@ -32,6 +32,7 @@ packages/core   PaymentIntent, GasRoutePolicy, ReceiptVerification
 packages/sdk    developer-facing client wrapper
 packages/api    Hono API boundary for create/verify routes
 packages/cli    early zkpay command surface
+packages/zkpay-sh public npm package bundling core, sdk, and cli
 examples/       merchant integration examples
 docs/           product and integration docs
 ```
@@ -72,21 +73,24 @@ Custody, fulfillment, and merchant business logic stay in the merchant app;
 zkpay defines the payment object, route decision, and receipt verification
 result.
 
-## npm Alpha Packages
+## npm Alpha Package
 
-The first npm alpha release targets the developer-facing packages:
+The first npm alpha release uses one public package while the `@zkpay` npm scope
+is reserved:
 
 ```bash
-npm install @zkpay/sdk@next
-npm install -g @zkpay/cli@next
+npm install zkpay-sh@next
+npm install -g zkpay-sh@next
 ```
 
-Published package targets:
+Package surface:
 
 ```txt
-@zkpay/core  Payment model, URI payload, gas routing, receipt verification
-@zkpay/sdk   Developer client around core primitives
-@zkpay/cli   Payment link command surface
+zkpay-sh       Developer client around core primitives
+zkpay-sh/core  Payment model, URI payload, gas routing, receipt verification
+zkpay-sh/sdk   Developer client export
+zkpay          Payment link command surface
+zkpay-sh       CLI alias
 ```
 
 Release command:

@@ -39,24 +39,28 @@
             <a href="decisions/0001-model-first.html">ADR 0001</a>
           </aside>
           <article class="doc-body">
-            <section><p>zkpay publishes developer packages as alpha builds first.</p></section>
-<section><h2>Target Packages</h2>
-<pre><code class="language-txt">@zkpay/core
-@zkpay/sdk
-@zkpay/cli</code></pre>
-<p><code>@zkpay/api</code> is built with the workspace but is not part of the first alpha publish target.</p>
+            <section><p>zkpay publishes a single public alpha package first.</p></section>
+<section><h2>Target Package</h2>
+<pre><code class="language-txt">zkpay-sh</code></pre>
+<p>The package bundles the workspace core, SDK, and CLI outputs so developers can install one package while the <code>@zkpay</code> npm scope is reserved.</p>
+<pre><code class="language-txt">zkpay-sh       main SDK export
+zkpay-sh/core  core payment model and verification primitives
+zkpay-sh/sdk   SDK export
+zkpay          CLI binary
+zkpay-sh       CLI binary alias</code></pre>
+<p><code>@zkpay/api</code> is built with the workspace but is not part of the public alpha publish target.</p>
 </section><section><h2>Versioning</h2>
 <p>The first alpha version is:</p>
 <pre><code class="language-txt">0.1.0-alpha.0</code></pre>
-<p>It should be published under the <code>next</code> dist-tag, not <code>latest</code>.</p>
+<p>It is published under the <code>next</code> dist-tag. Because <code>zkpay-sh</code> starts with only one public version, npm may also point <code>latest</code> at the same alpha until a stable release exists. Developer docs should still use <code>zkpay-sh@next</code>.</p>
 </section><section><h2>Local Release Flow</h2>
 <pre><code class="language-bash">npm install
 npm run check
 npm run pack:check
 NPM_TOKEN=... npm run publish:alpha</code></pre>
 <p>The publish script writes a temporary npm config under <code>.npm-cache/</code>, publishes in dependency order, then removes the temporary config.</p>
-</section><section><h2>Scope Note</h2>
-<p>The <code>@zkpay/core</code> and <code>@zkpay/sdk</code> package names already exist on npm. Publishing requires access to the <code>@zkpay</code> npm scope. If the token does not belong to a maintainer of that scope, npm will return a permission error.</p></section>
+</section><section><h2>Scope Plan</h2>
+<p>The <code>@zkpay/core</code> and <code>@zkpay/sdk</code> package names already exist on npm. Publishing under the <code>@zkpay</code> scope requires maintainer access to that npm scope. Until that access is available, <code>zkpay-sh</code> is the public install path and the scoped packages remain internal workspace boundaries.</p></section>
           </article>
         </div>
       </main>

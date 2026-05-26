@@ -45,7 +45,8 @@
 <table><thead><tr><th>Package</th><th>Responsibility</th></tr></thead><tbody><tr><td><code>@zkpay/core</code></td><td>Schemas, payment URI, gas routing, receipt verification.</td></tr>
 <tr><td><code>@zkpay/sdk</code></td><td>Developer-facing client around core primitives.</td></tr>
 <tr><td><code>@zkpay/api</code></td><td>Hono HTTP boundary for payment creation and verification.</td></tr>
-<tr><td><code>@zkpay/cli</code></td><td>Early command surface for payment links and scripts.</td></tr></tbody></table>
+<tr><td><code>@zkpay/cli</code></td><td>Early command surface for payment links and scripts.</td></tr>
+<tr><td><code>zkpay-sh</code></td><td>Public npm package bundling the core, SDK, and CLI outputs.</td></tr></tbody></table>
 </section><section><h2>Surfaces</h2>
 <h3>Merchant backend</h3>
 <p>Creates payment intents, stores order metadata, receives receipts, and verifies before fulfillment.</p>

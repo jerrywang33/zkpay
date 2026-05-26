@@ -1,16 +1,25 @@
 # npm Release
 
-zkpay publishes developer packages as alpha builds first.
+zkpay publishes a single public alpha package first.
 
-## Target Packages
+## Target Package
 
 ```txt
-@zkpay/core
-@zkpay/sdk
-@zkpay/cli
+zkpay-sh
 ```
 
-`@zkpay/api` is built with the workspace but is not part of the first alpha
+The package bundles the workspace core, SDK, and CLI outputs so developers can
+install one package while the `@zkpay` npm scope is reserved.
+
+```txt
+zkpay-sh       main SDK export
+zkpay-sh/core  core payment model and verification primitives
+zkpay-sh/sdk   SDK export
+zkpay          CLI binary
+zkpay-sh       CLI binary alias
+```
+
+`@zkpay/api` is built with the workspace but is not part of the public alpha
 publish target.
 
 ## Versioning
@@ -21,7 +30,9 @@ The first alpha version is:
 0.1.0-alpha.0
 ```
 
-It should be published under the `next` dist-tag, not `latest`.
+It is published under the `next` dist-tag. Because `zkpay-sh` starts with only
+one public version, npm may also point `latest` at the same alpha until a stable
+release exists. Developer docs should still use `zkpay-sh@next`.
 
 ## Local Release Flow
 
@@ -35,8 +46,9 @@ NPM_TOKEN=... npm run publish:alpha
 The publish script writes a temporary npm config under `.npm-cache/`, publishes
 in dependency order, then removes the temporary config.
 
-## Scope Note
+## Scope Plan
 
 The `@zkpay/core` and `@zkpay/sdk` package names already exist on npm. Publishing
-requires access to the `@zkpay` npm scope. If the token does not belong to a
-maintainer of that scope, npm will return a permission error.
+under the `@zkpay` scope requires maintainer access to that npm scope. Until that
+access is available, `zkpay-sh` is the public install path and the scoped
+packages remain internal workspace boundaries.

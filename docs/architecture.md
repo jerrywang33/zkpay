@@ -14,6 +14,7 @@ PaymentIntent -> Authorization -> GasRouteDecision -> PaymentReceipt -> Verifica
 | `@zkpay/sdk` | Developer-facing client around core primitives. |
 | `@zkpay/api` | Hono HTTP boundary for payment creation and verification. |
 | `@zkpay/cli` | Early command surface for payment links and scripts. |
+| `zkpay-sh` | Public npm package bundling the core, SDK, and CLI outputs. |
 
 ## Surfaces
 

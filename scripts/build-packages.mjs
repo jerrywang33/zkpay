@@ -10,6 +10,7 @@ for (const name of packages) {
 }
 
 await chmod(join("packages", "cli", "dist", "index.js"), 0o755);
+run("node", [join("scripts", "build-public-package.mjs")]);
 
 function run(command, args) {
   const result = spawnSync(command, args, {

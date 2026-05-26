@@ -1,0 +1,49 @@
+{
+  "name": "zkpay-sh",
+  "version": "0.1.0-alpha.0",
+  "description": "Sui stablecoin checkout SDK and CLI for zkpay.sh.",
+  "type": "module",
+  "license": "MIT",
+  "homepage": "https://zkpay.sh",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jerrywang33/zkpay.git",
+    "directory": "packages/zkpay-sh"
+  },
+  "bugs": {
+    "url": "https://github.com/jerrywang33/zkpay/issues"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./core": {
+      "types": "./dist/core/index.d.ts",
+      "import": "./dist/core/index.js"
+    },
+    "./sdk": {
+      "types": "./dist/sdk/index.d.ts",
+      "import": "./dist/sdk/index.js"
+    }
+  },
+  "bin": {
+    "zkpay": "dist/cli/index.js",
+    "zkpay-sh": "dist/cli/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node ../../scripts/build-public-package.mjs"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "zod": "^3.25.0"
+  }
+}

@@ -48,14 +48,12 @@
               <span class="pill">MVP surface</span>
               <h2>Quickstart</h2>
               <p>
-                The first public code path is intentionally narrow. It gives
+                The first public package is intentionally narrow. It gives
                 builders a deterministic payment object before adding Sui RPC,
                 zkLogin proving, webhook delivery, and merchant operations.
               </p>
-              <pre><code>npm install
-npm run check
-npm run cli:demo
-npm run dev</code></pre>
+              <pre><code>npm install zkpay-sh@next
+zkpay link create --amount 20 --coin USDC --receiver 0x84f --json</code></pre>
             </section>
 
             <section id="model">
@@ -93,7 +91,7 @@ npm run dev</code></pre>
                 </a>
                 <a class="page-card" href="./npm-release.html">
                   <strong>npm Release</strong>
-                  <p>Build, pack, and publish alpha packages under the next tag.</p>
+                  <p>Build, pack, and publish the public alpha package under the next tag.</p>
                 </a>
                 <a class="page-card" href="./roadmap.html">
                   <strong>Roadmap</strong>
