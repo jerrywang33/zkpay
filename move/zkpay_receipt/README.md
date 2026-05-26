@@ -28,5 +28,11 @@ sui move build
 sui client publish --gas-budget 100000000
 ```
 
+From the repository root, use:
+
+```bash
+npm run move:build
+```
+
 This is not yet a canonical zkpay mainnet package. Production users should
 audit and deploy their own package until a canonical package is published.

@@ -46,12 +46,16 @@ move/           alpha Sui Move receipt binding package
 npm install
 npm run build
 npm run check
+npm run move:build
 npm run example:merchant
 npm run dev
 ```
 
 `npm run dev` serves the landing page and hosted checkout routes with SPA
 fallback, so generated URLs like `/pay/zkp_...?intent=...` work locally.
+
+`npm run move:build` requires the Sui CLI and verifies the alpha
+`move/zkpay_receipt` package.
 
 ## Docs
 

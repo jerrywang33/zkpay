@@ -13,7 +13,7 @@ public struct PaymentBound has copy, drop {
     nonce: String,
 }
 
-public entry fun bind(
+public fun bind(
     receiver: address,
     amount_atomic: u64,
     coin_type: vector<u8>,

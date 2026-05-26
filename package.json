@@ -16,6 +16,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "pack:check": "npm run build && npm pack --cache .npm-cache --dry-run -w zkpay-sh",
+    "move:build": "sui move build --path move/zkpay_receipt",
     "publish:alpha": "node scripts/publish-alpha.mjs",
     "example:merchant": "node examples/merchant-demo/index.ts",
     "cli:demo": "node packages/cli/src/index.ts link create --amount 20 --coin USDC --receiver 0x84f --label \"API credits\" --order-id ord_123 --json",
