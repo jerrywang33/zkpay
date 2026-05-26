@@ -11,6 +11,14 @@ import { ZkpayClient } from "zkpay-sh";
 
 const zkpay = new ZkpayClient({
   baseUrl: "https://zkpay.sh",
+  gaslessStablecoins: [
+    {
+      symbol: "USDC",
+      network: "testnet",
+      coinType: "0x...::usdc::USDC",
+      decimals: 6,
+    },
+  ],
 });
 
 const payment = zkpay.createPayment({
@@ -32,6 +40,9 @@ const payment = zkpay.createPayment({
 
 console.log(payment.checkoutUrl);
 ```
+
+When checkout only specifies `network`, the SDK can fill `coinType` and
+`decimals` from `gaslessStablecoins`.
 
 Sui testnet settlement verification is also available:
 

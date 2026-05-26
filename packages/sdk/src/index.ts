@@ -1,6 +1,7 @@
 import {
   buildHostedCheckoutUrl,
   createPaymentIntent,
+  findGaslessStablecoinAsset,
   formatPaymentUri,
   parseHostedCheckoutUrl,
   parsePaymentUri,
@@ -67,20 +68,26 @@ export class ZkpayClient {
     const requiresProgrammableTransaction = Boolean(
       options.requiresProgrammableTransaction || options.checkout?.bindingPackageId,
     );
+    const gaslessStablecoins =
+      options.gaslessStablecoins ?? this.gaslessStablecoins;
+    const checkout = resolveCheckoutOptionsFromRegistry(
+      intent,
+      options.checkout,
+      gaslessStablecoins,
+    );
     const gasRoute = resolveGasRoute({
       intent,
       sponsorEnabled: this.sponsorEnabled,
       requiresProgrammableTransaction,
-      network: options.checkout?.network,
-      coinType: options.checkout?.coinType,
-      decimals: options.checkout?.decimals,
-      gaslessStablecoins:
-        options.gaslessStablecoins ?? this.gaslessStablecoins,
+      network: checkout?.network,
+      coinType: checkout?.coinType,
+      decimals: checkout?.decimals,
+      gaslessStablecoins,
     });
 
     return {
       intent,
-      checkoutUrl: buildHostedCheckoutUrl(this.baseUrl, intent, options.checkout),
+      checkoutUrl: buildHostedCheckoutUrl(this.baseUrl, intent, checkout),
       paymentUri: formatPaymentUri(intent),
       gasRoute,
     };
@@ -123,3 +130,28 @@ export function createZkpayClient(
 
 export * from "@zkpay/core";
 export * from "./sui.js";
+
+function resolveCheckoutOptionsFromRegistry(
+  intent: PaymentIntent,
+  checkout: HostedCheckoutOptions | undefined,
+  gaslessStablecoins: readonly GaslessStablecoinAsset[] | undefined,
+): HostedCheckoutOptions | undefined {
+  if (!gaslessStablecoins) return checkout;
+
+  const asset = findGaslessStablecoinAsset({
+    coin: intent.coin,
+    network: checkout?.network,
+    coinType: checkout?.coinType,
+    decimals: checkout?.decimals,
+    registry: gaslessStablecoins,
+  });
+
+  if (!asset) return checkout;
+
+  return {
+    ...checkout,
+    network: checkout?.network ?? asset.network,
+    coinType: checkout?.coinType ?? asset.coinType,
+    decimals: checkout?.decimals ?? asset.decimals,
+  };
+}
