@@ -30,6 +30,14 @@ ZKPAY_SIGNING_SECRET=merchant_secret zkpay link create \
   --json
 ```
 
+Verify a hosted checkout signature:
+
+```bash
+ZKPAY_SIGNING_SECRET=merchant_secret zkpay intent verify-signature \
+  --intent 'https://zkpay.sh/pay/zkp_...?intent=...&signature=...' \
+  --json
+```
+
 Verify a Sui testnet receipt:
 
 ```bash

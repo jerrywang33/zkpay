@@ -73,5 +73,6 @@ The package also exposes the CLI:
 npm install -g zkpay-sh@next
 zkpay link create --amount 20 --coin USDC --receiver 0x84f --json
 ZKPAY_SIGNING_SECRET=merchant_secret zkpay link create --amount 20 --coin USDC --receiver 0x84f --json
+ZKPAY_SIGNING_SECRET=merchant_secret zkpay intent verify-signature --intent 'https://zkpay.sh/pay/zkp_...?intent=...&signature=...' --json
 zkpay receipt verify-sui --intent '<json-or-checkout-url>' --tx-digest H2j... --coin-type 0x...::usdc::USDC --decimals 6 --binding-package-id 0x... --json
 ```

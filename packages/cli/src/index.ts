@@ -81,6 +81,42 @@ try {
     process.exit(result.ok ? 0 : 1);
   }
 
+  if (command === "intent" && subcommand === "verify-signature") {
+    const values = parseFlags(args);
+    if (values.help === "true") {
+      printUsage();
+      process.exit(0);
+    }
+    const client = new ZkpayClient({
+      signingSecret: required(
+        readSigningSecret(values),
+        "signing-secret or ZKPAY_SIGNING_SECRET",
+      ),
+    });
+    const request = parseIntentRequest(values.intent);
+    const signature = values.signature ?? request.signature;
+    const ok = signature
+      ? client.verifyIntentSignature(request.intent, signature)
+      : false;
+
+    if (values.json === "true") {
+      console.log(
+        JSON.stringify(
+          {
+            ok,
+            signature: signature ?? null,
+          },
+          null,
+          2,
+        ),
+      );
+    } else {
+      console.log(ok ? "verified" : "invalid");
+    }
+
+    process.exit(ok ? 0 : 1);
+  }
+
   printUsage();
   process.exit(1);
 } catch (error) {
@@ -117,13 +153,30 @@ function required(value: string | undefined, name: string): string {
 }
 
 function parseIntent(value: string | undefined) {
+  return parseIntentRequest(value).intent;
+}
+
+function parseIntentRequest(value: string | undefined) {
   const raw = required(value, "intent");
+  const client = new ZkpayClient();
 
   if (raw.startsWith("http://") || raw.startsWith("https://")) {
-    return new ZkpayClient().parseCheckoutUrl(raw);
+    return client.parseCheckoutRequest(raw);
   }
 
-  return JSON.parse(raw);
+  const parsed = JSON.parse(raw);
+
+  if (parsed.intent) {
+    return {
+      intent: parsed.intent,
+      signature: parsed.signature,
+    };
+  }
+
+  return {
+    intent: parsed,
+    signature: undefined,
+  };
 }
 
 function buildCheckoutOptions(values: Record<string, string>) {
@@ -152,6 +205,7 @@ function printUsage(): void {
     [
       "Usage:",
       "  zkpay link create --amount 20 --coin USDC --receiver 0x...",
+      "  zkpay intent verify-signature --intent '<json-or-checkout-url>'",
       "  zkpay receipt verify-sui --intent '<json-or-checkout-url>' --tx-digest <digest> --coin-type <type> --decimals 6",
       "",
       "Options:",
@@ -162,6 +216,7 @@ function printUsage(): void {
       "  --ptb                Mark checkout as programmable transaction",
       "  --sponsor false      Disable sponsor fallback",
       "  --signing-secret <s> Sign hosted checkout URL; prefer ZKPAY_SIGNING_SECRET",
+      "  --signature <s>      Payment intent signature for intent verification",
       "  --network <name>      Sui network for checkout or receipt verification",
       "  --coin-type <type>    Sui coin type for checkout or receipt verification",
       "  --decimals <n>        Sui coin decimals for checkout or receipt verification",
