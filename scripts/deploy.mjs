@@ -12,6 +12,7 @@ const files = [
   "styles.css",
   "favicon.svg",
   "_redirects",
+  "_headers",
 ];
 
 await import("./build-docs.mjs");

@@ -1,0 +1,11 @@
+/app.js
+  Cache-Control: public, max-age=0, must-revalidate
+
+/checkout.js
+  Cache-Control: public, max-age=0, must-revalidate
+
+/styles.css
+  Cache-Control: public, max-age=0, must-revalidate
+
+/docs/*
+  Cache-Control: public, max-age=0, must-revalidate
