@@ -3,9 +3,11 @@ import {
   getJsonRpcFullnodeUrl,
   type BalanceChange,
   type CoinMetadata,
+  type SuiEvent,
   type SuiTransactionBlockResponse,
 } from "@mysten/sui/jsonRpc";
 import { Transaction } from "@mysten/sui/transactions";
+import { normalizeSuiAddress } from "@mysten/sui/utils";
 import {
   paymentIntentSchema,
   verifyPaymentReceipt,
@@ -17,6 +19,10 @@ import {
 
 export type SuiNetwork = "mainnet" | "testnet" | "devnet" | "localnet";
 export type SuiAmountPolicy = "exact" | "at-least";
+
+export const ZKPAY_RECEIPT_MODULE = "receipt";
+export const ZKPAY_RECEIPT_FUNCTION = "bind";
+export const ZKPAY_RECEIPT_EVENT = "PaymentBound";
 
 export interface SuiRpcClient {
   getCoinMetadata(input: {
@@ -49,6 +55,7 @@ export interface BuildSuiPaymentTransactionInput {
   decimals: number;
   gasBudget?: number | string | bigint;
   useGasCoin?: boolean;
+  binding?: SuiPaymentBindingConfig;
 }
 
 export interface BuiltSuiPaymentTransaction {
@@ -56,6 +63,22 @@ export interface BuiltSuiPaymentTransaction {
   amountAtomic: string;
   coinType: string;
   receiver: string;
+  bindingEventType?: string;
+}
+
+export interface SuiPaymentBindingConfig {
+  packageId: string;
+  module?: string;
+  functionName?: string;
+  eventName?: string;
+  eventType?: string;
+}
+
+export interface AddSuiPaymentBindingInput extends SuiPaymentBindingConfig {
+  transaction: Transaction;
+  intent: PaymentIntent;
+  coinType: string;
+  amountAtomic: string;
 }
 
 export interface SuiSettlementVerificationInput
@@ -66,6 +89,7 @@ export interface SuiSettlementVerificationInput
   decimals?: number;
   expectedSender?: string;
   amountPolicy?: SuiAmountPolicy;
+  binding?: SuiPaymentBindingConfig;
   signal?: AbortSignal;
 }
 
@@ -78,6 +102,8 @@ export type SuiSettlementVerificationError =
   | "receiver_payment_missing"
   | "amount_mismatch"
   | "sender_mismatch"
+  | "binding_event_missing"
+  | "binding_event_mismatch"
   | "local_receipt_failed";
 
 export interface SuiSettlementVerificationResult {
@@ -93,6 +119,7 @@ export interface SuiSettlementVerificationResult {
     amountAtomic: string;
     receiverDelta: string;
     senderDelta?: string;
+    bindingEventType?: string;
   };
   warnings: string[];
 }
@@ -122,12 +149,50 @@ export function buildSuiPaymentTransaction(
     intent.receiver,
   );
 
+  const bindingEventType = input.binding
+    ? addSuiPaymentBinding({
+        transaction,
+        intent,
+        coinType,
+        amountAtomic,
+        ...input.binding,
+      })
+    : undefined;
+
   return {
     transaction,
     amountAtomic,
     coinType,
     receiver: intent.receiver,
+    bindingEventType,
   };
+}
+
+export function addSuiPaymentBinding(
+  input: AddSuiPaymentBindingInput,
+): string {
+  const intent = paymentIntentSchema.parse(input.intent);
+  const packageId = normalizeSuiAddress(input.packageId);
+  const moduleName = input.module ?? ZKPAY_RECEIPT_MODULE;
+  const functionName = input.functionName ?? ZKPAY_RECEIPT_FUNCTION;
+  const eventName = input.eventName ?? ZKPAY_RECEIPT_EVENT;
+  const eventType =
+    input.eventType ?? `${packageId}::${moduleName}::${eventName}`;
+
+  assertU64Amount(input.amountAtomic);
+
+  input.transaction.moveCall({
+    target: `${packageId}::${moduleName}::${functionName}`,
+    arguments: [
+      input.transaction.pure.address(intent.receiver),
+      input.transaction.pure.u64(input.amountAtomic),
+      input.transaction.pure.vector("u8", utf8Bytes(input.coinType)),
+      input.transaction.pure.vector("u8", utf8Bytes(intent.id)),
+      input.transaction.pure.vector("u8", utf8Bytes(intent.nonce)),
+    ],
+  });
+
+  return eventType;
 }
 
 export class SuiReceiptVerifier {
@@ -150,9 +215,11 @@ export class SuiReceiptVerifier {
     input: SuiSettlementVerificationInput,
   ): Promise<SuiSettlementVerificationResult> {
     const intent = paymentIntentSchema.parse(input.intent);
-    const warnings = [
-      "nonce_not_onchain_bound: v0.2 verifies settlement by digest, receiver, coin, and amount; merchants must store tx digests to prevent replay until an onchain zkpay memo/event is added.",
-    ];
+    const warnings = input.binding
+      ? []
+      : [
+          "nonce_not_onchain_bound: v0.2 verifies settlement by digest, receiver, coin, and amount; pass binding to require an onchain zkpay receipt event.",
+        ];
     let coinType: string;
 
     try {
@@ -207,6 +274,7 @@ export class SuiReceiptVerifier {
         options: {
           showBalanceChanges: true,
           showEffects: true,
+          showEvents: Boolean(input.binding),
           showInput: true,
         },
         signal: input.signal,
@@ -250,6 +318,26 @@ export class SuiReceiptVerifier {
       errors.push("sender_mismatch");
     }
 
+    const bindingEventType = input.binding
+      ? resolveBindingEventType(input.binding)
+      : undefined;
+
+    if (input.binding && bindingEventType) {
+      const bindingResult = verifyBindingEvent(tx.events, {
+        intent,
+        coinType,
+        amountAtomic,
+        expectedSender: input.expectedSender,
+        eventType: bindingEventType,
+      });
+
+      if (!bindingResult.found) {
+        errors.push("binding_event_missing");
+      } else if (!bindingResult.matches) {
+        errors.push("binding_event_mismatch");
+      }
+    }
+
     const receipt: PaymentReceipt = {
       paymentId: intent.id,
       status: errors.length === 0 ? "succeeded" : "failed",
@@ -282,6 +370,7 @@ export class SuiReceiptVerifier {
         amountAtomic,
         receiverDelta: receiverDelta.toString(),
         senderDelta: senderDelta?.toString(),
+        bindingEventType,
       },
       warnings,
     };
@@ -316,6 +405,93 @@ function resolveCoinType(intent: PaymentIntent, coinType?: string): string {
   throw new Error("coinType is required when the payment intent coin is a symbol");
 }
 
+function resolveBindingEventType(binding: SuiPaymentBindingConfig): string {
+  const packageId = normalizeSuiAddress(binding.packageId);
+
+  return (
+    binding.eventType ??
+    `${packageId}::${binding.module ?? ZKPAY_RECEIPT_MODULE}::${
+      binding.eventName ?? ZKPAY_RECEIPT_EVENT
+    }`
+  );
+}
+
+function verifyBindingEvent(
+  events: SuiEvent[] | null | undefined,
+  expected: {
+    intent: PaymentIntent;
+    coinType: string;
+    amountAtomic: string;
+    expectedSender?: string;
+    eventType: string;
+  },
+): { found: boolean; matches: boolean } {
+  const event = (events ?? []).find((item) =>
+    sameCoinType(item.type, expected.eventType),
+  );
+
+  if (!event) {
+    return {
+      found: false,
+      matches: false,
+    };
+  }
+
+  const parsed = isRecord(event.parsedJson) ? event.parsedJson : {};
+  const payer = readEventValue(parsed, "payer");
+  const receiver = readEventValue(parsed, "receiver");
+  const amountAtomic = readEventValue(parsed, "amount_atomic");
+  const coinType = readEventValue(parsed, "coin_type");
+  const paymentId = readEventValue(parsed, "payment_id");
+  const nonce = readEventValue(parsed, "nonce");
+  const matches =
+    sameAddress(receiver, expected.intent.receiver) &&
+    amountAtomic === expected.amountAtomic &&
+    coinType === expected.coinType &&
+    paymentId === expected.intent.id &&
+    nonce === expected.intent.nonce &&
+    (!expected.expectedSender || sameAddress(payer, expected.expectedSender));
+
+  return {
+    found: true,
+    matches,
+  };
+}
+
+function readEventValue(
+  parsed: Record<string, unknown>,
+  key: string,
+): string | null {
+  const value = parsed[key];
+
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "bigint") {
+    return String(value);
+  }
+  if (Array.isArray(value) && value.every((item) => typeof item === "number")) {
+    return new TextDecoder().decode(Uint8Array.from(value));
+  }
+
+  return null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function utf8Bytes(value: string): number[] {
+  return [...new TextEncoder().encode(value)];
+}
+
+function assertU64Amount(amountAtomic: string): void {
+  const amount = BigInt(amountAtomic);
+  const maxU64 = 2n ** 64n - 1n;
+
+  if (amount < 0n || amount > maxU64) {
+    throw new Error("Binding amount must fit in u64");
+  }
+}
+
 function sumBalanceChanges(
   changes: BalanceChange[] | null | undefined,
   owner: string,
@@ -336,7 +512,13 @@ function ownerAddress(owner: BalanceChange["owner"]): string | null {
 }
 
 function sameAddress(left: string | null, right: string): boolean {
-  return left?.toLowerCase() === right.toLowerCase();
+  if (!left) return false;
+
+  try {
+    return normalizeSuiAddress(left) === normalizeSuiAddress(right);
+  } catch {
+    return left.toLowerCase() === right.toLowerCase();
+  }
 }
 
 function sameCoinType(left: string, right: string): boolean {

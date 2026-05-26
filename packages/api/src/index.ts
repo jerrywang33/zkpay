@@ -40,6 +40,15 @@ const verifySuiPaymentRequestSchema = z.object({
   decimals: z.number().int().nonnegative().optional(),
   expectedSender: z.string().min(1).optional(),
   amountPolicy: z.enum(["exact", "at-least"]).optional(),
+  binding: z
+    .object({
+      packageId: z.string().min(1),
+      module: z.string().min(1).optional(),
+      functionName: z.string().min(1).optional(),
+      eventName: z.string().min(1).optional(),
+      eventType: z.string().min(1).optional(),
+    })
+    .optional(),
   options: z
     .object({
       enforceExpiration: z.boolean().optional(),
@@ -208,6 +217,7 @@ export function createZkpayApi(options: ZkpayApiOptions = {}): Hono {
         decimals: payload.data.decimals,
         expectedSender: payload.data.expectedSender,
         amountPolicy: payload.data.amountPolicy,
+        binding: payload.data.binding,
         ...payload.data.options,
       });
     } catch (error) {

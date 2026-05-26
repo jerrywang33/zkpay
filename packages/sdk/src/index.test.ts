@@ -3,6 +3,7 @@ import {
   SuiReceiptVerifier,
   ZkpayClient,
   buildSuiPaymentTransaction,
+  addSuiPaymentBinding,
   decimalToAtomicAmount,
   type PaymentIntent,
   type PaymentReceipt,
@@ -10,6 +11,9 @@ import {
 } from "./index.js";
 
 describe("@zkpay/sdk", () => {
+  const bindingEventType =
+    "0x0000000000000000000000000000000000000000000000000000000000000abc::receipt::PaymentBound";
+
   it("creates a checkout URL, payment URI, and route decision", () => {
     const client = new ZkpayClient({
       baseUrl: "https://checkout.zkpay.local",
@@ -101,6 +105,50 @@ describe("@zkpay/sdk", () => {
     expect(built.transaction.getData().commands).toHaveLength(2);
   });
 
+  it("can append a zkpay payment binding event call", () => {
+    const intent = makeSuiIntent();
+    const built = buildSuiPaymentTransaction({
+      intent,
+      payer: "0x1111111111111111111111111111111111111111111111111111111111111111",
+      coinType: "0x2::usdc::USDC",
+      decimals: 6,
+      binding: {
+        packageId: "0xabc",
+      },
+    });
+
+    expect(built.bindingEventType).toBe(bindingEventType);
+    expect(built.transaction.getData().commands).toHaveLength(3);
+    expect(built.transaction.getData().commands[2]).toMatchObject({
+      MoveCall: {
+        package:
+          "0x0000000000000000000000000000000000000000000000000000000000000abc",
+        module: "receipt",
+        function: "bind",
+      },
+    });
+  });
+
+  it("can append a zkpay payment binding event call to an existing transaction", () => {
+    const intent = makeSuiIntent();
+    const built = buildSuiPaymentTransaction({
+      intent,
+      payer: "0x1111111111111111111111111111111111111111111111111111111111111111",
+      coinType: "0x2::usdc::USDC",
+      decimals: 6,
+    });
+    const eventType = addSuiPaymentBinding({
+      transaction: built.transaction,
+      intent,
+      amountAtomic: built.amountAtomic,
+      coinType: built.coinType,
+      packageId: "0xabc",
+    });
+
+    expect(eventType).toBe(bindingEventType);
+    expect(built.transaction.getData().commands).toHaveLength(3);
+  });
+
   it("verifies Sui settlement from transaction balance changes", async () => {
     const intent = makeSuiIntent();
     const verifier = new SuiReceiptVerifier({
@@ -129,6 +177,76 @@ describe("@zkpay/sdk", () => {
       nonce: intent.nonce,
     });
     expect(result.tx?.receiverDelta).toBe("20000000");
+  });
+
+  it("verifies Sui settlement with an onchain zkpay binding event", async () => {
+    const intent = makeSuiIntent();
+    const verifier = new SuiReceiptVerifier({
+      client: makeSuiClient({
+        receiverAmount: "20000000",
+        senderAmount: "-20000000",
+        event: {
+          packageId: "0xabc",
+          payer:
+            "0x1111111111111111111111111111111111111111111111111111111111111111",
+          receiver: intent.receiver,
+          amountAtomic: "20000000",
+          coinType: "0x2::usdc::USDC",
+          paymentId: intent.id,
+          nonce: intent.nonce,
+        },
+      }),
+    });
+
+    const result = await verifier.verify({
+      intent,
+      txDigest: "H2jbnwW7j5T9s2YRJrZupaymentdigest",
+      coinType: "0x2::usdc::USDC",
+      expectedSender:
+        "0x1111111111111111111111111111111111111111111111111111111111111111",
+      binding: {
+        packageId: "0xabc",
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.errors).toEqual([]);
+    expect(result.warnings).toEqual([]);
+    expect(result.tx?.bindingEventType).toBe(bindingEventType);
+  });
+
+  it("rejects Sui settlement when the binding event does not match", async () => {
+    const intent = makeSuiIntent();
+    const verifier = new SuiReceiptVerifier({
+      client: makeSuiClient({
+        receiverAmount: "20000000",
+        senderAmount: "-20000000",
+        event: {
+          packageId: "0xabc",
+          payer:
+            "0x1111111111111111111111111111111111111111111111111111111111111111",
+          receiver: intent.receiver,
+          amountAtomic: "20000000",
+          coinType: "0x2::usdc::USDC",
+          paymentId: "zkp_other",
+          nonce: intent.nonce,
+        },
+      }),
+    });
+
+    const result = await verifier.verify({
+      intent,
+      txDigest: "H2jbnwW7j5T9s2YRJrZupaymentdigest",
+      coinType: "0x2::usdc::USDC",
+      expectedSender:
+        "0x1111111111111111111111111111111111111111111111111111111111111111",
+      binding: {
+        packageId: "0xabc",
+      },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errors).toContain("binding_event_mismatch");
   });
 
   it("rejects Sui settlement when the receiver amount does not match", async () => {
@@ -190,9 +308,19 @@ function makeSuiIntent(): PaymentIntent {
 function makeSuiClient({
   receiverAmount,
   senderAmount,
+  event,
 }: {
   receiverAmount: string;
   senderAmount: string;
+  event?: {
+    packageId: string;
+    payer: string;
+    receiver: string;
+    amountAtomic: string;
+    coinType: string;
+    paymentId: string;
+    nonce: string;
+  };
 }): SuiRpcClient {
   return {
     async getCoinMetadata() {
@@ -232,6 +360,31 @@ function makeSuiClient({
             amount: senderAmount,
           },
         ],
+        events: event
+          ? [
+              {
+                id: {
+                  txDigest: input.digest,
+                  eventSeq: "0",
+                },
+                packageId: event.packageId,
+                transactionModule: "receipt",
+                sender: event.payer,
+                type:
+                  "0x0000000000000000000000000000000000000000000000000000000000000abc::receipt::PaymentBound",
+                parsedJson: {
+                  payer: event.payer,
+                  receiver: event.receiver,
+                  amount_atomic: event.amountAtomic,
+                  coin_type: event.coinType,
+                  payment_id: event.paymentId,
+                  nonce: event.nonce,
+                },
+                bcs: "",
+                bcsEncoding: "base64",
+              },
+            ]
+          : [],
       } as Awaited<ReturnType<SuiRpcClient["getTransactionBlock"]>>;
     },
   };

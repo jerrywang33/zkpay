@@ -56,8 +56,9 @@ zkpay-sh       CLI binary alias</code></pre>
 <p><code>@zkpay/api</code> is built with the workspace but is not part of the public alpha publish target.</p>
 </section><section><h2>Versioning</h2>
 <p>The current alpha version is:</p>
-<pre><code class="language-txt">0.2.0-alpha.1</code></pre>
+<pre><code class="language-txt">0.2.0-alpha.2</code></pre>
 <p>It is published under the <code>next</code> dist-tag. Developer docs should use <code>zkpay-sh@next</code>; <code>latest</code> is not the integration target while the package is in alpha.</p>
+<p><code>0.2.0-alpha.2</code> adds optional Sui receipt binding support: SDK transactions can append <code>receipt::bind</code>, hosted checkout can include <code>bindingPackageId</code>, and the SDK/API/CLI verifiers can require the emitted <code>PaymentBound</code> event.</p>
 </section><section><h2>Local Release Flow</h2>
 <pre><code class="language-bash">npm install
 npm run check

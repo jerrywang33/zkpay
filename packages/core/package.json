@@ -1,6 +1,6 @@
 {
   "name": "@zkpay/core",
-  "version": "0.2.0-alpha.1",
+  "version": "0.2.0-alpha.2",
   "description": "Core payment intent, gas routing, and receipt verification primitives for zkpay.",
   "type": "module",
   "license": "MIT",

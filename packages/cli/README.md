@@ -23,6 +23,7 @@ zkpay receipt verify-sui \
   --tx-digest H2j... \
   --coin-type 0x...::usdc::USDC \
   --decimals 6 \
+  --binding-package-id 0x... \
   --network testnet \
   --json
 ```

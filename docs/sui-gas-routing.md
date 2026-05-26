@@ -27,6 +27,6 @@ coin type allowlists.
 
 Do not call every path gasless.
 
-If checkout requires programmable transaction logic, receipt creation, swap,
-deposit, or another extra operation, zkpay should either sponsor gas or explain
-why payer-paid fallback is required.
+If checkout requires programmable transaction logic, receipt creation, onchain
+`PaymentBound` binding, swap, deposit, or another extra operation, zkpay should
+either sponsor gas or explain why payer-paid fallback is required.

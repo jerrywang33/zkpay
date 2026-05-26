@@ -37,6 +37,7 @@ packages/zkpay-sh public npm package bundling core, sdk, and cli
 examples/       merchant integration examples
 docs/           product and integration docs
 site/           browser checkout runtime source
+move/           alpha Sui Move receipt binding package
 ```
 
 ## Local
@@ -109,6 +110,9 @@ const result = await zkpay.verifySuiPayment({
   intent,
   txDigest,
   coinType: "0x...::usdc::USDC",
+  binding: {
+    packageId: "0x...",
+  },
 });
 ```
 
@@ -116,6 +120,10 @@ Hosted checkout links under `/pay/:id` now load a browser wallet handoff. The
 page connects a Wallet Standard Sui wallet, submits the stablecoin transfer,
 captures the transaction digest, and emits the JSON payload a merchant backend
 can send to `/payments/verify/sui`.
+
+v0.2 can optionally append a `receipt::bind` Move call that emits `PaymentBound`
+with payer, receiver, amount, coin type, payment id, and nonce. The bundled
+verifier can require that event before producing a successful receipt.
 
 The API includes a pluggable Sui replay store. By default it keeps an in-process
 record of verified payment ids and transaction digests, so demos reject repeated

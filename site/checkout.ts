@@ -16,6 +16,7 @@ import {
   type SuiTransactionBlockResponse,
 } from "@mysten/sui/jsonRpc";
 import { Transaction } from "@mysten/sui/transactions";
+import { normalizeSuiAddress } from "@mysten/sui/utils";
 
 type SuiNetwork = "mainnet" | "testnet" | "devnet" | "localnet";
 type CheckoutStateKind = "info" | "busy" | "ok" | "error";
@@ -37,6 +38,8 @@ interface CheckoutConfig {
   coinType: string;
   decimals: number;
   rpcUrl: string;
+  bindingPackageId: string;
+  bindingEventType: string;
 }
 
 interface MountCheckoutInput {
@@ -78,6 +81,9 @@ const NETWORK_CHAINS = {
   devnet: SUI_DEVNET_CHAIN,
   localnet: SUI_LOCALNET_CHAIN,
 } as const satisfies Record<SuiNetwork, `${string}:${string}`>;
+const ZKPAY_RECEIPT_MODULE = "receipt";
+const ZKPAY_RECEIPT_FUNCTION = "bind";
+const ZKPAY_RECEIPT_EVENT = "PaymentBound";
 
 export function mountCheckout({
   target,
@@ -180,6 +186,16 @@ export function mountCheckout({
             data-field="rpcUrl"
             placeholder="${escapeHtml(getJsonRpcFullnodeUrl(state.network))}"
             value="${escapeHtml(state.rpcUrl)}"
+            ${expired ? "disabled" : ""}
+          />
+        </label>
+
+        <label class="checkout-field">
+          <span>Binding package</span>
+          <input
+            data-field="bindingPackageId"
+            placeholder="Optional 0x... package with receipt::bind"
+            value="${escapeHtml(state.bindingPackageId)}"
             ${expired ? "disabled" : ""}
           />
         </label>
@@ -291,6 +307,12 @@ export function mountCheckout({
       });
 
     target
+      .querySelector<HTMLInputElement>('[data-field="bindingPackageId"]')
+      ?.addEventListener("input", (event) => {
+        state.bindingPackageId = (event.currentTarget as HTMLInputElement).value.trim();
+      });
+
+    target
       .querySelector<HTMLSelectElement>('[data-field="wallet"]')
       ?.addEventListener("change", (event) => {
         state.selectedWalletName = (event.currentTarget as HTMLSelectElement).value;
@@ -385,6 +407,7 @@ export function mountCheckout({
         state.account.address,
         state.coinType.trim(),
         state.decimals,
+        state.bindingPackageId.trim(),
       );
 
       setStatus("busy", "Waiting for wallet signature and execution...");
@@ -426,6 +449,7 @@ export function mountCheckout({
         options: {
           showBalanceChanges: true,
           showEffects: true,
+          showEvents: Boolean(state.bindingPackageId.trim()),
           showInput: true,
         },
       });
@@ -433,6 +457,8 @@ export function mountCheckout({
         coinType: state.coinType.trim(),
         amountAtomic,
         expectedSender: state.account?.address,
+        bindingPackageId: state.bindingPackageId.trim(),
+        bindingEventType: state.bindingEventType.trim(),
       });
 
       state.verification = verification;
@@ -472,6 +498,7 @@ function buildCoinObjectPaymentTransaction(
   payer: string,
   coinType: string,
   decimals: number,
+  bindingPackageId?: string,
 ): Promise<{ transaction: Transaction; amountAtomic: string }> {
   return (async () => {
     const amountAtomic = decimalToAtomicAmount(intent.amount, decimals);
@@ -488,6 +515,15 @@ function buildCoinObjectPaymentTransaction(
 
     const [paymentCoin] = transaction.splitCoins(primary, [amountAtomic]);
     transaction.transferObjects([paymentCoin], intent.receiver);
+
+    if (bindingPackageId) {
+      addZkpayBindingCall(transaction, {
+        intent,
+        packageId: bindingPackageId,
+        coinType,
+        amountAtomic,
+      });
+    }
 
     return { transaction, amountAtomic };
   })();
@@ -533,6 +569,8 @@ function verifyTransaction(
     coinType: string;
     amountAtomic: string;
     expectedSender?: string;
+    bindingPackageId?: string;
+    bindingEventType?: string;
   },
 ): VerificationResult {
   const errors: string[] = [];
@@ -558,6 +596,23 @@ function verifyTransaction(
     errors.push("sender_mismatch");
   }
 
+  if (options.bindingPackageId) {
+    const bindingEventType =
+      options.bindingEventType || bindingEventTypeFromPackage(options.bindingPackageId);
+    const binding = verifyBindingEvent(tx, intent, {
+      eventType: bindingEventType,
+      coinType: options.coinType,
+      amountAtomic: options.amountAtomic,
+      expectedSender: options.expectedSender,
+    });
+
+    if (!binding.found) {
+      errors.push("binding_event_missing");
+    } else if (!binding.matches) {
+      errors.push("binding_event_mismatch");
+    }
+  }
+
   return {
     ok: errors.length === 0,
     errors,
@@ -578,6 +633,12 @@ function buildVerifyPayload(intent: PaymentIntent, state: CheckoutState) {
     decimals: state.decimals,
     expectedSender: state.account?.address,
     amountPolicy: "exact",
+    binding: state.bindingPackageId.trim()
+      ? {
+          packageId: state.bindingPackageId.trim(),
+          eventType: state.bindingEventType.trim() || undefined,
+        }
+      : undefined,
     options: {
       enforceExpiration: true,
     },
@@ -622,6 +683,70 @@ function toObjectRef(coin: CoinStruct) {
   };
 }
 
+function addZkpayBindingCall(
+  transaction: Transaction,
+  input: {
+    intent: PaymentIntent;
+    packageId: string;
+    coinType: string;
+    amountAtomic: string;
+  },
+): void {
+  const packageId = normalizeSuiAddress(input.packageId);
+
+  transaction.moveCall({
+    target: `${packageId}::${ZKPAY_RECEIPT_MODULE}::${ZKPAY_RECEIPT_FUNCTION}`,
+    arguments: [
+      transaction.pure.address(input.intent.receiver),
+      transaction.pure.u64(input.amountAtomic),
+      transaction.pure.vector("u8", utf8Bytes(input.coinType)),
+      transaction.pure.vector("u8", utf8Bytes(input.intent.id)),
+      transaction.pure.vector("u8", utf8Bytes(input.intent.nonce)),
+    ],
+  });
+}
+
+function verifyBindingEvent(
+  tx: SuiTransactionBlockResponse,
+  intent: PaymentIntent,
+  expected: {
+    eventType: string;
+    coinType: string;
+    amountAtomic: string;
+    expectedSender?: string;
+  },
+): { found: boolean; matches: boolean } {
+  const event = (tx.events ?? []).find((item) =>
+    sameCoinType(item.type, expected.eventType),
+  );
+
+  if (!event) {
+    return {
+      found: false,
+      matches: false,
+    };
+  }
+
+  const parsed = isRecord(event.parsedJson) ? event.parsedJson : {};
+  const matches =
+    sameAddress(readEventValue(parsed, "receiver"), intent.receiver) &&
+    readEventValue(parsed, "amount_atomic") === expected.amountAtomic &&
+    readEventValue(parsed, "coin_type") === expected.coinType &&
+    readEventValue(parsed, "payment_id") === intent.id &&
+    readEventValue(parsed, "nonce") === intent.nonce &&
+    (!expected.expectedSender ||
+      sameAddress(readEventValue(parsed, "payer"), expected.expectedSender));
+
+  return {
+    found: true,
+    matches,
+  };
+}
+
+function bindingEventTypeFromPackage(packageId: string): string {
+  return `${normalizeSuiAddress(packageId)}::${ZKPAY_RECEIPT_MODULE}::${ZKPAY_RECEIPT_EVENT}`;
+}
+
 function decimalToAtomicAmount(amount: string, decimals: number): string {
   if (!/^(0|[1-9]\d*)(\.\d+)?$/.test(amount)) {
     throw new Error("Expected a positive decimal amount.");
@@ -663,8 +788,37 @@ function ownerAddress(owner: BalanceChange["owner"]): string | null {
   return null;
 }
 
+function readEventValue(
+  parsed: Record<string, unknown>,
+  key: string,
+): string | null {
+  const value = parsed[key];
+
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "bigint") return String(value);
+  if (Array.isArray(value) && value.every((item) => typeof item === "number")) {
+    return new TextDecoder().decode(Uint8Array.from(value));
+  }
+
+  return null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function utf8Bytes(value: string): number[] {
+  return [...new TextEncoder().encode(value)];
+}
+
 function sameAddress(left: string | null, right: string): boolean {
-  return left?.toLowerCase() === right.toLowerCase();
+  if (!left) return false;
+
+  try {
+    return normalizeSuiAddress(left) === normalizeSuiAddress(right);
+  } catch {
+    return left.toLowerCase() === right.toLowerCase();
+  }
 }
 
 function sameCoinType(left: string, right: string): boolean {

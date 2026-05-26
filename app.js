@@ -14,7 +14,7 @@ const proofPoints = [
   {
     label: "For merchants",
     title: "Verify every paid order",
-    body: "Return receipt data that a backend can check against amount, coin, receiver, nonce, and transaction digest.",
+    body: "Return receipt data that a backend can check against amount, coin, receiver, transaction digest, and optional binding event.",
   },
 ];
 
@@ -44,8 +44,8 @@ const capabilities = [
   },
   {
     title: "Receipt Verification",
-    body: "Give merchants a deterministic way to verify settlement before unlocking goods, credits, or access.",
-    meta: "Digest / nonce / webhook",
+    body: "Give merchants a deterministic way to verify settlement and optional onchain binding before fulfillment.",
+    meta: "Digest / nonce / event / webhook",
   },
 ];
 
@@ -187,8 +187,8 @@ function render() {
               <code>npm install zkpay-sh@next</code>
             </button>
             <div class="release-note">
-              <span>0.2.0-alpha.1</span>
-              <span>Hosted checkout now returns a Sui digest, and the API can reject repeated verified digests.</span>
+              <span>0.2.0-alpha.2</span>
+              <span>SDK transactions can now bind zkpay payment ids onchain with a receipt event.</span>
             </div>
           </div>
 
@@ -306,7 +306,7 @@ npm install -g zkpay-sh@next</code></pre>
             <article class="code-panel">
               <div class="code-head">
                 <span>Build transaction</span>
-                <button type="button" data-copy="const built = zkpay.buildSuiPaymentTransaction({ intent: payment.intent, payer: '0x...', coinType: '0x...::usdc::USDC', decimals: 6 });">Copy</button>
+                <button type="button" data-copy="const built = zkpay.buildSuiPaymentTransaction({ intent: payment.intent, payer: '0x...', coinType: '0x...::usdc::USDC', decimals: 6, binding: { packageId: '0x...' } });">Copy</button>
               </div>
               <pre><code>const zkpay = new ZkpayClient();
 const payment = zkpay.createPayment({
@@ -320,19 +320,25 @@ const built = zkpay.buildSuiPaymentTransaction({
   intent: payment.intent,
   payer: "0x...",
   coinType: "0x...::usdc::USDC",
-  decimals: 6
+  decimals: 6,
+  binding: {
+    packageId: "0x..."
+  }
 });</code></pre>
             </article>
             <article class="code-panel">
               <div class="code-head">
                 <span>Verify digest</span>
-                <button type="button" data-copy="await zkpay.verifySuiPayment({ intent: payment.intent, txDigest, coinType: '0x...::usdc::USDC' });">Copy</button>
+                <button type="button" data-copy="await zkpay.verifySuiPayment({ intent: payment.intent, txDigest, coinType: '0x...::usdc::USDC', binding: { packageId: '0x...' } });">Copy</button>
               </div>
               <pre><code>const result = await zkpay.verifySuiPayment({
   intent: payment.intent,
   txDigest,
   coinType: "0x...::usdc::USDC",
-  expectedSender: "0x..."
+  expectedSender: "0x...",
+  binding: {
+    packageId: "0x..."
+  }
 });
 
 if (!result.ok) throw new Error(result.errors.join(", "));</code></pre>
@@ -340,9 +346,9 @@ if (!result.ok) throw new Error(result.errors.join(", "));</code></pre>
             <article class="code-panel">
               <div class="code-head">
                 <span>Hosted checkout</span>
-                <button type="button" data-copy="https://zkpay.sh/pay/zkp_...?intent=...&network=testnet&coinType=0x...::usdc::USDC&decimals=6">Copy</button>
+                <button type="button" data-copy="https://zkpay.sh/pay/zkp_...?intent=...&network=testnet&coinType=0x...::usdc::USDC&decimals=6&bindingPackageId=0x...">Copy</button>
               </div>
-              <pre><code>https://zkpay.sh/pay/zkp_...?intent=...&amp;network=testnet&amp;coinType=0x...::usdc::USDC&amp;decimals=6
+              <pre><code>https://zkpay.sh/pay/zkp_...?intent=...&amp;network=testnet&amp;coinType=0x...::usdc::USDC&amp;decimals=6&amp;bindingPackageId=0x...
 
 // checkout connects a Sui wallet, submits payment,
 // returns txDigest, then builds /payments/verify/sui payload</code></pre>
@@ -350,13 +356,14 @@ if (!result.ok) throw new Error(result.errors.join(", "));</code></pre>
             <article class="code-panel">
               <div class="code-head">
                 <span>CLI</span>
-                <button type="button" data-copy="zkpay receipt verify-sui --intent '<json-or-checkout-url>' --tx-digest H2j... --coin-type 0x...::usdc::USDC --decimals 6 --network testnet --json">Copy</button>
+                <button type="button" data-copy="zkpay receipt verify-sui --intent '<json-or-checkout-url>' --tx-digest H2j... --coin-type 0x...::usdc::USDC --decimals 6 --binding-package-id 0x... --network testnet --json">Copy</button>
               </div>
               <pre><code>zkpay receipt verify-sui \
   --intent '&lt;json-or-checkout-url&gt;' \
   --tx-digest H2j... \
   --coin-type 0x...::usdc::USDC \
   --decimals 6 \
+  --binding-package-id 0x... \
   --network testnet \
   --json</code></pre>
             </article>
@@ -624,6 +631,8 @@ function readCheckoutConfig(intent) {
     coinType: url.searchParams.get("coinType") ?? (intent.coin.includes("::") ? intent.coin : ""),
     decimals: Number.isInteger(decimals) && decimals >= 0 ? decimals : 6,
     rpcUrl: url.searchParams.get("rpcUrl") ?? "",
+    bindingPackageId: url.searchParams.get("bindingPackageId") ?? "",
+    bindingEventType: url.searchParams.get("bindingEventType") ?? "",
   };
 }
 

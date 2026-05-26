@@ -51,9 +51,9 @@
               <h2>Quickstart</h2>
               <p>
                 The first public package is intentionally narrow. It gives
-                builders a deterministic payment object before adding Sui RPC,
-                hosted wallet settlement, zkLogin proving, webhook delivery,
-                and merchant operations.
+                builders a deterministic payment object, hosted wallet
+                settlement, Sui RPC verification, optional onchain receipt
+                binding, and a CLI/API surface for merchant prototypes.
               </p>
               <pre><code>npm install zkpay-sh@next
 zkpay link create --amount 20 --coin USDC --receiver 0x84f --json</code></pre>
@@ -92,14 +92,20 @@ const payment = zkpay.createPayment({
   intent: payment.intent,
   payer: "0x...",
   coinType: "0x...::usdc::USDC",
-  decimals: 6
+  decimals: 6,
+  binding: {
+    packageId: "0x..."
+  }
 });
 
 const result = await zkpay.verifySuiPayment({
   intent: payment.intent,
   txDigest: "H2j...",
   coinType: "0x...::usdc::USDC",
-  expectedSender: "0x..."
+  expectedSender: "0x...",
+  binding: {
+    packageId: "0x..."
+  }
 });</code></pre>
               <pre><code>https://zkpay.sh/pay/zkp_...?intent=...&amp;network=testnet&amp;coinType=0x...::usdc::USDC&amp;decimals=6
 
@@ -129,7 +135,7 @@ const result = await zkpay.verifySuiPayment({
                 </a>
                 <a class="page-card" href="./v0.2.html">
                   <strong>v0.2 Testnet Settlement</strong>
-                  <p>Wallet transaction building and Sui RPC receipt verification.</p>
+                  <p>Wallet transaction building, receipt binding, and Sui RPC verification.</p>
                 </a>
                 <a class="page-card" href="./architecture.html">
                   <strong>Architecture</strong>

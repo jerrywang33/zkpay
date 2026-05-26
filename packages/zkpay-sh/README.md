@@ -37,12 +37,18 @@ const built = zkpay.buildSuiPaymentTransaction({
   payer: "0x...",
   coinType: "0x...::usdc::USDC",
   decimals: 6,
+  binding: {
+    packageId: "0x...",
+  },
 });
 
 const result = await zkpay.verifySuiPayment({
   intent: payment.intent,
   txDigest: "H2j...",
   coinType: built.coinType,
+  binding: {
+    packageId: "0x...",
+  },
 });
 ```
 
@@ -58,5 +64,5 @@ The package also exposes the CLI:
 ```bash
 npm install -g zkpay-sh@next
 zkpay link create --amount 20 --coin USDC --receiver 0x84f --json
-zkpay receipt verify-sui --intent '<json-or-checkout-url>' --tx-digest H2j... --coin-type 0x...::usdc::USDC --decimals 6 --json
+zkpay receipt verify-sui --intent '<json-or-checkout-url>' --tx-digest H2j... --coin-type 0x...::usdc::USDC --decimals 6 --binding-package-id 0x... --json
 ```

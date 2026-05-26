@@ -79,9 +79,12 @@ describe("@zkpay/api", () => {
   });
 
   it("verifies Sui settlement through the HTTP boundary", async () => {
+    let capturedBinding: unknown;
     const app = createZkpayApi({
       suiVerifier: {
         async verify(input) {
+          capturedBinding = input.binding;
+
           return {
             ok: true,
             errors: [],
@@ -131,10 +134,16 @@ describe("@zkpay/api", () => {
         coinType: "0x2::usdc::USDC",
         decimals: 6,
         expectedSender: "0xpayer",
+        binding: {
+          packageId: "0xabc",
+        },
       }),
     });
 
     expect(verifyResponse.status).toBe(200);
+    expect(capturedBinding).toEqual({
+      packageId: "0xabc",
+    });
     expect(await verifyResponse.json()).toMatchObject({
       ok: true,
       replay: {

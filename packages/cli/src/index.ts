@@ -59,6 +59,14 @@ try {
       decimals: values.decimals ? Number(values.decimals) : undefined,
       expectedSender: values.sender,
       amountPolicy: values["amount-policy"] === "at-least" ? "at-least" : "exact",
+      binding: values["binding-package-id"]
+        ? {
+            packageId: values["binding-package-id"],
+            module: values["binding-module"],
+            eventName: values["binding-event-name"],
+            eventType: values["binding-event-type"],
+          }
+        : undefined,
       enforceExpiration: values["enforce-expiration"] === "true",
     });
 
@@ -134,6 +142,10 @@ function printUsage(): void {
       "  --rpc-url <url>       Override Sui RPC URL",
       "  --sender <address>    Expected payer address",
       "  --amount-policy <x>   exact or at-least",
+      "  --binding-package-id <id> Require zkpay receipt binding event package",
+      "  --binding-module <name> Override binding Move module name",
+      "  --binding-event-name <n> Override binding event struct name",
+      "  --binding-event-type <t> Override expected binding event type",
       "  --json               Print full payment object",
     ].join("\n"),
   );

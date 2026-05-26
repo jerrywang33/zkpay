@@ -120,6 +120,10 @@ Request:
   "decimals": 6,
   "expectedSender": "0x...",
   "amountPolicy": "exact",
+  "binding": {
+    "packageId": "0x...",
+    "eventType": "0x...::receipt::PaymentBound"
+  },
   "options": {
     "enforceExpiration": true
   }
@@ -146,8 +150,9 @@ Response:
 ```
 
 The Sui route verifies transaction effects and balance changes through RPC. It
-does not yet prove the zkpay nonce was written onchain, so merchant systems must
-store transaction digests and reject reuse.
+can also require a `PaymentBound` event when `binding.packageId` is supplied.
+Without binding, merchant systems must treat the zkpay nonce as offchain state,
+store transaction digests, and reject reuse.
 
 ## Replay Guard
 

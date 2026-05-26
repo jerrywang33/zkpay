@@ -43,9 +43,21 @@ The v0.2 verifier uses Sui RPC transaction effects and balance changes to check
 the digest, receiver, coin type, and atomic amount before a merchant fulfills
 the order.
 
+When a receipt binding package is configured, the payment transaction also calls
+`receipt::bind` and emits `PaymentBound`. The verifier then checks that the
+event binds the payer, receiver, amount, coin type, payment id, and nonce to the
+same transaction digest.
+
+### Move receipt package
+
+`move/zkpay_receipt` is the current alpha Move package for onchain binding. It
+is intentionally small: it only emits the payment binding event and does not
+custody funds or mutate merchant state. A canonical deployed package is still a
+hardening item.
+
 ## Current Scope
 
 v0.2 connects hosted checkout, the SDK, and the API to a Sui testnet settlement
 loop. The default replay store is in-process memory for demos; durable replay
-storage, zkLogin proving, webhook delivery, and onchain payment-id binding
-remain the next integration layers.
+storage, zkLogin proving, webhook delivery, and a canonical deployed receipt
+package remain the next integration layers.

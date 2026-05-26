@@ -114,6 +114,10 @@
   &quot;decimals&quot;: 6,
   &quot;expectedSender&quot;: &quot;0x...&quot;,
   &quot;amountPolicy&quot;: &quot;exact&quot;,
+  &quot;binding&quot;: {
+    &quot;packageId&quot;: &quot;0x...&quot;,
+    &quot;eventType&quot;: &quot;0x...::receipt::PaymentBound&quot;
+  },
   &quot;options&quot;: {
     &quot;enforceExpiration&quot;: true
   }
@@ -133,7 +137,7 @@
     &quot;settledAt&quot;: &quot;2026-05-25T01:00:00.000Z&quot;
   }
 }</code></pre>
-<p>The Sui route verifies transaction effects and balance changes through RPC. It does not yet prove the zkpay nonce was written onchain, so merchant systems must store transaction digests and reject reuse.</p>
+<p>The Sui route verifies transaction effects and balance changes through RPC. It can also require a <code>PaymentBound</code> event when <code>binding.packageId</code> is supplied. Without binding, merchant systems must treat the zkpay nonce as offchain state, store transaction digests, and reject reuse.</p>
 </section><section><h2>Replay Guard</h2>
 <p><code>createZkpayApi()</code> enables an in-process Sui replay store by default. After a successful <code>/payments/verify/sui</code> response, the store records the payment id and transaction digest. A repeated digest or a second digest for the same payment id returns <code>409</code>.</p>
 <p>Replay response shape:</p>

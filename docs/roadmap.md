@@ -19,11 +19,12 @@
 - In-process digest replay guard for `/payments/verify/sui`.
 - `/payments/verify/sui` backend route.
 - CLI receipt verification for demos and scripts.
+- Optional onchain payment binding through `receipt::bind` and `PaymentBound`.
 
 ## v0.2 Next Hardening
 
 - Durable merchant replay store adapters.
-- Onchain payment id or nonce binding through event, memo, or witness object.
+- Publish and audit a canonical zkpay receipt package on Sui testnet/mainnet.
 - Gasless stablecoin eligibility checks from live network data.
 
 ## v0.3: zkLogin Path

@@ -8413,6 +8413,9 @@ var NETWORK_CHAINS = {
   devnet: SUI_DEVNET_CHAIN,
   localnet: SUI_LOCALNET_CHAIN
 };
+var ZKPAY_RECEIPT_MODULE = "receipt";
+var ZKPAY_RECEIPT_FUNCTION = "bind";
+var ZKPAY_RECEIPT_EVENT = "PaymentBound";
 function mountCheckout({
   target,
   intent,
@@ -8498,6 +8501,16 @@ function mountCheckout({
           />
         </label>
 
+        <label class="checkout-field">
+          <span>Binding package</span>
+          <input
+            data-field="bindingPackageId"
+            placeholder="Optional 0x... package with receipt::bind"
+            value="${escapeHtml(state.bindingPackageId)}"
+            ${expired ? "disabled" : ""}
+          />
+        </label>
+
         <div class="checkout-wallet-row">
           <label class="checkout-field">
             <span>Wallet</span>
@@ -8568,6 +8581,9 @@ function mountCheckout({
     target.querySelector('[data-field="rpcUrl"]')?.addEventListener("input", (event) => {
       state.rpcUrl = event.currentTarget.value.trim();
     });
+    target.querySelector('[data-field="bindingPackageId"]')?.addEventListener("input", (event) => {
+      state.bindingPackageId = event.currentTarget.value.trim();
+    });
     target.querySelector('[data-field="wallet"]')?.addEventListener("change", (event) => {
       state.selectedWalletName = event.currentTarget.value;
       state.account = null;
@@ -8627,7 +8643,8 @@ function mountCheckout({
         intent,
         state.account.address,
         state.coinType.trim(),
-        state.decimals
+        state.decimals,
+        state.bindingPackageId.trim()
       );
       setStatus("busy", "Waiting for wallet signature and execution...");
       const result = await signAndExecuteTransaction(wallet, {
@@ -8663,13 +8680,16 @@ function mountCheckout({
         options: {
           showBalanceChanges: true,
           showEffects: true,
+          showEvents: Boolean(state.bindingPackageId.trim()),
           showInput: true
         }
       });
       const verification = verifyTransaction(tx, intent, {
         coinType: state.coinType.trim(),
         amountAtomic,
-        expectedSender: state.account?.address
+        expectedSender: state.account?.address,
+        bindingPackageId: state.bindingPackageId.trim(),
+        bindingEventType: state.bindingEventType.trim()
       });
       state.verification = verification;
       setStatus(
@@ -8695,7 +8715,7 @@ function mountCheckout({
     render();
   }
 }
-function buildCoinObjectPaymentTransaction(client, intent, payer, coinType, decimals) {
+function buildCoinObjectPaymentTransaction(client, intent, payer, coinType, decimals, bindingPackageId) {
   return (async () => {
     const amountAtomic = decimalToAtomicAmount(intent.amount, decimals);
     const coins = await collectCoins(client, payer, coinType, BigInt(amountAtomic));
@@ -8708,6 +8728,14 @@ function buildCoinObjectPaymentTransaction(client, intent, payer, coinType, deci
     }
     const [paymentCoin] = transaction.splitCoins(primary, [amountAtomic]);
     transaction.transferObjects([paymentCoin], intent.receiver);
+    if (bindingPackageId) {
+      addZkpayBindingCall(transaction, {
+        intent,
+        packageId: bindingPackageId,
+        coinType,
+        amountAtomic
+      });
+    }
     return { transaction, amountAtomic };
   })();
 }
@@ -8749,6 +8777,20 @@ function verifyTransaction(tx, intent, options) {
   if (options.expectedSender && (!senderDelta || senderDelta >= 0n)) {
     errors.push("sender_mismatch");
   }
+  if (options.bindingPackageId) {
+    const bindingEventType = options.bindingEventType || bindingEventTypeFromPackage(options.bindingPackageId);
+    const binding = verifyBindingEvent(tx, intent, {
+      eventType: bindingEventType,
+      coinType: options.coinType,
+      amountAtomic: options.amountAtomic,
+      expectedSender: options.expectedSender
+    });
+    if (!binding.found) {
+      errors.push("binding_event_missing");
+    } else if (!binding.matches) {
+      errors.push("binding_event_mismatch");
+    }
+  }
   return {
     ok: errors.length === 0,
     errors,
@@ -8767,6 +8809,10 @@ function buildVerifyPayload(intent, state) {
     decimals: state.decimals,
     expectedSender: state.account?.address,
     amountPolicy: "exact",
+    binding: state.bindingPackageId.trim() ? {
+      packageId: state.bindingPackageId.trim(),
+      eventType: state.bindingEventType.trim() || void 0
+    } : void 0,
     options: {
       enforceExpiration: true
     }
@@ -8799,6 +8845,39 @@ function toObjectRef(coin) {
     digest: coin.digest
   };
 }
+function addZkpayBindingCall(transaction, input) {
+  const packageId = normalizeSuiAddress(input.packageId);
+  transaction.moveCall({
+    target: `${packageId}::${ZKPAY_RECEIPT_MODULE}::${ZKPAY_RECEIPT_FUNCTION}`,
+    arguments: [
+      transaction.pure.address(input.intent.receiver),
+      transaction.pure.u64(input.amountAtomic),
+      transaction.pure.vector("u8", utf8Bytes(input.coinType)),
+      transaction.pure.vector("u8", utf8Bytes(input.intent.id)),
+      transaction.pure.vector("u8", utf8Bytes(input.intent.nonce))
+    ]
+  });
+}
+function verifyBindingEvent(tx, intent, expected) {
+  const event = (tx.events ?? []).find(
+    (item) => sameCoinType(item.type, expected.eventType)
+  );
+  if (!event) {
+    return {
+      found: false,
+      matches: false
+    };
+  }
+  const parsed = isRecord(event.parsedJson) ? event.parsedJson : {};
+  const matches = sameAddress(readEventValue(parsed, "receiver"), intent.receiver) && readEventValue(parsed, "amount_atomic") === expected.amountAtomic && readEventValue(parsed, "coin_type") === expected.coinType && readEventValue(parsed, "payment_id") === intent.id && readEventValue(parsed, "nonce") === intent.nonce && (!expected.expectedSender || sameAddress(readEventValue(parsed, "payer"), expected.expectedSender));
+  return {
+    found: true,
+    matches
+  };
+}
+function bindingEventTypeFromPackage(packageId) {
+  return `${normalizeSuiAddress(packageId)}::${ZKPAY_RECEIPT_MODULE}::${ZKPAY_RECEIPT_EVENT}`;
+}
 function decimalToAtomicAmount(amount, decimals) {
   if (!/^(0|[1-9]\d*)(\.\d+)?$/.test(amount)) {
     throw new Error("Expected a positive decimal amount.");
@@ -8828,8 +8907,28 @@ function ownerAddress(owner) {
   if ("ConsensusAddressOwner" in owner) return owner.ConsensusAddressOwner.owner;
   return null;
 }
+function readEventValue(parsed, key) {
+  const value = parsed[key];
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "bigint") return String(value);
+  if (Array.isArray(value) && value.every((item) => typeof item === "number")) {
+    return new TextDecoder().decode(Uint8Array.from(value));
+  }
+  return null;
+}
+function isRecord(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+function utf8Bytes(value) {
+  return [...new TextEncoder().encode(value)];
+}
 function sameAddress(left, right) {
-  return left?.toLowerCase() === right.toLowerCase();
+  if (!left) return false;
+  try {
+    return normalizeSuiAddress(left) === normalizeSuiAddress(right);
+  } catch {
+    return left.toLowerCase() === right.toLowerCase();
+  }
 }
 function sameCoinType(left, right) {
   return left === right || left.toLowerCase() === right.toLowerCase();
