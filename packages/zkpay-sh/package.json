@@ -1,6 +1,6 @@
 {
   "name": "zkpay-sh",
-  "version": "0.2.0-alpha.3",
+  "version": "0.2.0-alpha.4",
   "description": "Sui stablecoin checkout SDK and CLI for zkpay.sh.",
   "type": "module",
   "license": "MIT",
@@ -27,6 +27,10 @@
     "./sdk": {
       "types": "./dist/sdk/index.d.ts",
       "import": "./dist/sdk/index.js"
+    },
+    "./api": {
+      "types": "./dist/api/index.d.ts",
+      "import": "./dist/api/index.js"
     }
   },
   "bin": {
@@ -45,6 +49,7 @@
   },
   "dependencies": {
     "@mysten/sui": "^2.17.0",
+    "hono": "^4.12.23",
     "zod": "^3.25.0"
   }
 }

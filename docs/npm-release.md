@@ -8,8 +8,8 @@ zkpay publishes a single public alpha package first.
 zkpay-sh
 ```
 
-The package bundles the workspace core, SDK, and CLI outputs so developers can
-install one package while the `@zkpay` npm scope is reserved.
+The package bundles the workspace core, SDK, API, and CLI outputs so developers
+can install one package while the `@zkpay` npm scope is reserved.
 
 Install it with:
 
@@ -25,28 +25,30 @@ TypeScript SDK for transaction building and receipt verification.
 zkpay-sh       main SDK export
 zkpay-sh/core  core payment model and verification primitives
 zkpay-sh/sdk   SDK export
+zkpay-sh/api   Hono API boundary
 zkpay          CLI binary
 zkpay-sh       CLI binary alias
 ```
 
-`@zkpay/api` is built with the workspace but is not part of the public alpha
-publish target.
+`@zkpay/api` remains an internal workspace package until `@zkpay` scope access is
+available. Public installs should use `zkpay-sh/api`.
 
 ## Versioning
 
 The current alpha version is:
 
 ```txt
-0.2.0-alpha.3
+0.2.0-alpha.4
 ```
 
 It is published under the `next` dist-tag. Developer docs should use
 `zkpay-sh@next`; `latest` is not the integration target while the package is in
 alpha.
 
-`0.2.0-alpha.3` adds first-class checkout URL runtime options across SDK, API,
-and CLI, building on the optional Sui receipt binding support from
-`0.2.0-alpha.2`.
+`0.2.0-alpha.4` adds the public `zkpay-sh/api` subpath so the single install
+package now covers SDK, API, and CLI integration. It builds on the first-class
+checkout URL runtime options added in `0.2.0-alpha.3` and the optional Sui
+receipt binding support from `0.2.0-alpha.2`.
 
 ## Local Release Flow
 

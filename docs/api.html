@@ -40,7 +40,8 @@
             <a href="decisions/0001-model-first.html">ADR 0001</a>
           </aside>
           <article class="doc-body">
-            <section><p>The first API package is intentionally thin. It wraps the workspace SDK with Hono and keeps the product boundary explicit. For public installs, use <code>zkpay-sh</code> or <code>zkpay-sh/sdk</code>.</p></section>
+            <section><p>The first API package is intentionally thin. It wraps the workspace SDK with Hono and keeps the product boundary explicit. For public installs, use <code>zkpay-sh/api</code>.</p>
+<pre><code class="language-ts">import { createZkpayApi } from &quot;zkpay-sh/api&quot;;</code></pre></section>
 <section><h2>Health</h2>
 <pre><code class="language-txt">GET /health</code></pre>
 <p>Response:</p>

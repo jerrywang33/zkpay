@@ -64,6 +64,7 @@ Subpath exports are available for lower-level imports:
 ```ts
 import { createPaymentIntent } from "zkpay-sh/core";
 import { ZkpayClient } from "zkpay-sh/sdk";
+import { createZkpayApi } from "zkpay-sh/api";
 ```
 
 The package also exposes the CLI:

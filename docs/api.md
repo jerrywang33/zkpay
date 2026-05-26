@@ -2,7 +2,11 @@
 
 The first API package is intentionally thin. It wraps the workspace SDK with
 Hono and keeps the product boundary explicit. For public installs, use
-`zkpay-sh` or `zkpay-sh/sdk`.
+`zkpay-sh/api`.
+
+```ts
+import { createZkpayApi } from "zkpay-sh/api";
+```
 
 ## Health
 

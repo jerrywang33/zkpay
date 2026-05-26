@@ -20,6 +20,9 @@ await copyModule("core");
 await copyModule("sdk", {
   "@zkpay/core": "../core/index.js",
 });
+await copyModule("api", {
+  "@zkpay/sdk": "../sdk/index.js",
+});
 await copyModule("cli", {
   "@zkpay/sdk": "../sdk/index.js",
 });

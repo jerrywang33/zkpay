@@ -33,7 +33,7 @@ packages/core   PaymentIntent, GasRoutePolicy, ReceiptVerification
 packages/sdk    developer-facing client wrapper and Sui settlement verifier
 packages/api    Hono API boundary for create/verify/Sui receipt routes
 packages/cli    payment link and Sui receipt command surface
-packages/zkpay-sh public npm package bundling core, sdk, and cli
+packages/zkpay-sh public npm package bundling core, sdk, api, and cli
 examples/       merchant integration examples
 docs/           product and integration docs
 site/           browser checkout runtime source
@@ -105,6 +105,7 @@ Package surface:
 zkpay-sh       Developer client around core primitives
 zkpay-sh/core  Payment model, URI payload, gas routing, receipt verification
 zkpay-sh/sdk   Developer client export
+zkpay-sh/api   Hono API boundary for create/verify/Sui receipt routes
 zkpay          Payment link command surface
 zkpay-sh       CLI alias
 ```
@@ -153,6 +154,12 @@ The API includes a pluggable Sui replay store. By default it keeps an in-process
 record of verified payment ids and transaction digests, so demos reject repeated
 settlement attempts. Production merchant backends should inject a durable store
 backed by their own database or cache.
+
+The public package includes the API subpath:
+
+```ts
+import { createZkpayApi } from "zkpay-sh/api";
+```
 
 Release command:
 
