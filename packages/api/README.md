@@ -23,5 +23,15 @@ matches the payer, receiver, amount, coin type, payment id, and nonce.
 generate hosted checkout URLs with `network`, `coinType`, `decimals`, and
 `bindingPackageId` already attached.
 
+Cloudflare D1 replay storage is available without another dependency:
+
+```ts
+import { createD1SuiReplayStore, createZkpayApi } from "zkpay-sh/api";
+
+const app = createZkpayApi({
+  replayStore: createD1SuiReplayStore(env.DB),
+});
+```
+
 This package is part of the workspace build. Public installs currently use the
 bundled `zkpay-sh` package until `@zkpay` npm scope access is available.

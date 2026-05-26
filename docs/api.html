@@ -158,7 +158,19 @@
     &quot;attempted&quot;: {}
   }
 }</code></pre>
-<p>The default store only protects a single running API process. Production merchant backends should pass a durable <code>replayStore</code> implementation backed by their own database or cache.</p></section>
+<p>The default store only protects a single running API process. Production merchant backends should pass a durable <code>replayStore</code> implementation backed by their own database or cache.</p>
+<p>Cloudflare D1 is supported through the public API subpath:</p>
+<pre><code class="language-ts">import {
+  createD1SuiReplayStore,
+  createD1SuiReplayStoreSchema,
+  createZkpayApi,
+} from &quot;zkpay-sh/api&quot;;
+
+console.log(createD1SuiReplayStoreSchema());
+
+const app = createZkpayApi({
+  replayStore: createD1SuiReplayStore(env.DB),
+});</code></pre></section>
           </article>
         </div>
       </main>

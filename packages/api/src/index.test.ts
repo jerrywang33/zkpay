@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { createZkpayApi, type SuiVerifier } from "./index.js";
+import {
+  createD1SuiReplayStore,
+  createD1SuiReplayStoreSchema,
+  createZkpayApi,
+  type D1DatabaseLike,
+  type D1PreparedStatementLike,
+  type SuiReplayRecord,
+  type SuiVerifier,
+} from "./index.js";
 
 describe("@zkpay/api", () => {
   it("creates payments through the HTTP boundary", async () => {
@@ -361,6 +369,67 @@ describe("@zkpay/api", () => {
     expect(secondResponse.status).toBe(200);
     expect(await secondResponse.json()).not.toHaveProperty("replay");
   });
+
+  it("can use a D1 replay store adapter", async () => {
+    const app = createZkpayApi({
+      replayStore: createD1SuiReplayStore(new FakeD1Database()),
+      suiVerifier: makeSuccessfulSuiVerifier(),
+    });
+    const createResponse = await app.request("/payments", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        payment: {
+          amount: "20",
+          coin: "USDC",
+          receiver: "0x84f",
+          label: "API credits",
+        },
+      }),
+    });
+    const payment = await createResponse.json();
+    const request = {
+      intent: payment.intent,
+      txDigest: "H2jbnwW7j5T9s2YRJrZupaymentdigest",
+      coinType: "0x2::usdc::USDC",
+      decimals: 6,
+    };
+
+    const firstResponse = await app.request("/payments/verify/sui", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(request),
+    });
+    const secondResponse = await app.request("/payments/verify/sui", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(request),
+    });
+
+    expect(firstResponse.status).toBe(200);
+    expect(secondResponse.status).toBe(409);
+    expect(await secondResponse.json()).toMatchObject({
+      ok: false,
+      errors: ["digest_already_used"],
+    });
+  });
+
+  it("generates D1 replay store schema", () => {
+    expect(createD1SuiReplayStoreSchema()).toContain(
+      "create table if not exists zkpay_sui_replay",
+    );
+    expect(createD1SuiReplayStoreSchema({ tableName: "merchant_replay" }))
+      .toContain("create table if not exists merchant_replay");
+    expect(() =>
+      createD1SuiReplayStoreSchema({ tableName: "bad-name" }),
+    ).toThrow("Invalid SQL identifier");
+  });
 });
 
 function makeSuccessfulSuiVerifier(): SuiVerifier {
@@ -387,4 +456,72 @@ function makeSuccessfulSuiVerifier(): SuiVerifier {
       };
     },
   };
+}
+
+class FakeD1Database implements D1DatabaseLike {
+  readonly records: SuiReplayRecord[] = [];
+
+  prepare(query: string): D1PreparedStatementLike {
+    return new FakeD1PreparedStatement(this, query);
+  }
+}
+
+class FakeD1PreparedStatement implements D1PreparedStatementLike {
+  constructor(
+    private readonly database: FakeD1Database,
+    private readonly query: string,
+    private readonly values: unknown[] = [],
+  ) {}
+
+  bind(...values: unknown[]): D1PreparedStatementLike {
+    return new FakeD1PreparedStatement(this.database, this.query, values);
+  }
+
+  async first<T = unknown>(): Promise<T | null> {
+    const value = String(this.values[0]);
+    const record = this.query.includes("where tx_digest")
+      ? this.database.records.find((item) => item.txDigest === value)
+      : this.database.records.find((item) => item.paymentId === value);
+
+    if (!record) return null;
+
+    return {
+      payment_id: record.paymentId,
+      tx_digest: record.txDigest,
+      amount: record.amount,
+      coin: record.coin,
+      receiver: record.receiver,
+      nonce: record.nonce,
+      settled_at: record.settledAt,
+      verified_at: record.verifiedAt,
+    } as T;
+  }
+
+  async run(): Promise<unknown> {
+    const record: SuiReplayRecord = {
+      paymentId: String(this.values[0]),
+      txDigest: String(this.values[1]),
+      amount: String(this.values[2]),
+      coin: String(this.values[3]),
+      receiver: String(this.values[4]),
+      nonce: String(this.values[5]),
+      settledAt: String(this.values[6]),
+      verifiedAt: String(this.values[7]),
+    };
+
+    if (
+      this.database.records.some(
+        (item) =>
+          item.paymentId === record.paymentId ||
+          item.txDigest === record.txDigest,
+      )
+    ) {
+      throw new Error("D1 unique constraint failed");
+    }
+
+    this.database.records.push(record);
+    return {
+      success: true,
+    };
+  }
 }

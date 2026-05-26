@@ -38,17 +38,18 @@ available. Public installs should use `zkpay-sh/api`.
 The current alpha version is:
 
 ```txt
-0.2.0-alpha.4
+0.2.0-alpha.5
 ```
 
 It is published under the `next` dist-tag. Developer docs should use
 `zkpay-sh@next`; `latest` is not the integration target while the package is in
 alpha.
 
-`0.2.0-alpha.4` adds the public `zkpay-sh/api` subpath so the single install
-package now covers SDK, API, and CLI integration. It builds on the first-class
-checkout URL runtime options added in `0.2.0-alpha.3` and the optional Sui
-receipt binding support from `0.2.0-alpha.2`.
+`0.2.0-alpha.5` adds a Cloudflare D1 replay store adapter for the public
+`zkpay-sh/api` subpath. `0.2.0-alpha.4` added the API subpath so the single
+install package covers SDK, API, and CLI integration. Both build on the
+first-class checkout URL runtime options added in `0.2.0-alpha.3` and the
+optional Sui receipt binding support from `0.2.0-alpha.2`.
 
 ## Local Release Flow
 

@@ -189,3 +189,19 @@ Replay response shape:
 The default store only protects a single running API process. Production
 merchant backends should pass a durable `replayStore` implementation backed by
 their own database or cache.
+
+Cloudflare D1 is supported through the public API subpath:
+
+```ts
+import {
+  createD1SuiReplayStore,
+  createD1SuiReplayStoreSchema,
+  createZkpayApi,
+} from "zkpay-sh/api";
+
+console.log(createD1SuiReplayStoreSchema());
+
+const app = createZkpayApi({
+  replayStore: createD1SuiReplayStore(env.DB),
+});
+```

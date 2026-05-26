@@ -158,7 +158,11 @@ backed by their own database or cache.
 The public package includes the API subpath:
 
 ```ts
-import { createZkpayApi } from "zkpay-sh/api";
+import { createD1SuiReplayStore, createZkpayApi } from "zkpay-sh/api";
+
+const app = createZkpayApi({
+  replayStore: createD1SuiReplayStore(env.DB),
+});
 ```
 
 Release command:

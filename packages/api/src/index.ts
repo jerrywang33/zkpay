@@ -104,6 +104,20 @@ export interface SuiReplayStore {
   record(record: SuiReplayRecord): Promise<SuiReplayDecision> | SuiReplayDecision;
 }
 
+export interface D1PreparedStatementLike {
+  bind(...values: unknown[]): D1PreparedStatementLike;
+  first<T = unknown>(): Promise<T | null>;
+  run(): Promise<unknown>;
+}
+
+export interface D1DatabaseLike {
+  prepare(query: string): D1PreparedStatementLike;
+}
+
+export interface D1SuiReplayStoreOptions {
+  tableName?: string;
+}
+
 export class InMemorySuiReplayStore implements SuiReplayStore {
   private readonly byDigest = new Map<string, SuiReplayRecord>();
   private readonly byPaymentId = new Map<string, SuiReplayRecord>();
@@ -139,6 +153,93 @@ export class InMemorySuiReplayStore implements SuiReplayStore {
       record,
     };
   }
+}
+
+export function createD1SuiReplayStore(
+  database: D1DatabaseLike,
+  options: D1SuiReplayStoreOptions = {},
+): SuiReplayStore {
+  const tableName = sqlIdentifier(options.tableName ?? "zkpay_sui_replay");
+
+  return {
+    async record(record) {
+      try {
+        await database
+          .prepare(
+            `insert into ${tableName} (payment_id, tx_digest, amount, coin, receiver, nonce, settled_at, verified_at) values (?, ?, ?, ?, ?, ?, ?, ?)`,
+          )
+          .bind(
+            record.paymentId,
+            record.txDigest,
+            record.amount,
+            record.coin,
+            record.receiver,
+            record.nonce,
+            record.settledAt,
+            record.verifiedAt,
+          )
+          .run();
+
+        return {
+          ok: true,
+          record,
+        };
+      } catch (error) {
+        const digestRecord = await findD1ReplayRecord(
+          database,
+          tableName,
+          "tx_digest",
+          record.txDigest,
+        );
+
+        if (digestRecord) {
+          return {
+            ok: false,
+            reason: "digest_already_used",
+            existing: digestRecord,
+            attempted: record,
+          };
+        }
+
+        const paymentRecord = await findD1ReplayRecord(
+          database,
+          tableName,
+          "payment_id",
+          record.paymentId,
+        );
+
+        if (paymentRecord) {
+          return {
+            ok: false,
+            reason: "payment_already_settled",
+            existing: paymentRecord,
+            attempted: record,
+          };
+        }
+
+        throw error;
+      }
+    },
+  };
+}
+
+export function createD1SuiReplayStoreSchema(
+  options: D1SuiReplayStoreOptions = {},
+): string {
+  const tableName = sqlIdentifier(options.tableName ?? "zkpay_sui_replay");
+
+  return [
+    `create table if not exists ${tableName} (`,
+    "  payment_id text primary key,",
+    "  tx_digest text not null unique,",
+    "  amount text not null,",
+    "  coin text not null,",
+    "  receiver text not null,",
+    "  nonce text not null,",
+    "  settled_at text not null,",
+    "  verified_at text not null",
+    ");",
+  ].join("\n");
 }
 
 export interface ZkpayApiOptions extends ZkpayClientOptions {
@@ -295,4 +396,52 @@ function createReplayRecord(receipt: PaymentReceipt): SuiReplayRecord {
     settledAt: receipt.settledAt,
     verifiedAt: new Date().toISOString(),
   };
+}
+
+async function findD1ReplayRecord(
+  database: D1DatabaseLike,
+  tableName: string,
+  columnName: "payment_id" | "tx_digest",
+  value: string,
+): Promise<SuiReplayRecord | null> {
+  const row = await database
+    .prepare(
+      `select payment_id, tx_digest, amount, coin, receiver, nonce, settled_at, verified_at from ${tableName} where ${columnName} = ? limit 1`,
+    )
+    .bind(value)
+    .first<D1SuiReplayRow>();
+
+  return row ? replayRecordFromD1Row(row) : null;
+}
+
+interface D1SuiReplayRow {
+  payment_id: string;
+  tx_digest: string;
+  amount: string;
+  coin: string;
+  receiver: string;
+  nonce: string;
+  settled_at: string;
+  verified_at: string;
+}
+
+function replayRecordFromD1Row(row: D1SuiReplayRow): SuiReplayRecord {
+  return {
+    paymentId: row.payment_id,
+    txDigest: row.tx_digest,
+    amount: row.amount,
+    coin: row.coin,
+    receiver: row.receiver,
+    nonce: row.nonce,
+    settledAt: row.settled_at,
+    verifiedAt: row.verified_at,
+  };
+}
+
+function sqlIdentifier(value: string): string {
+  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(value)) {
+    throw new Error(`Invalid SQL identifier: ${value}`);
+  }
+
+  return value;
 }
