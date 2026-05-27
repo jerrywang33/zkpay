@@ -41,6 +41,10 @@ export const paymentIntentIdSchema = z
   .string()
   .regex(/^zkp_[a-zA-Z0-9_-]+$/, "Expected a zkpay payment id");
 
+export const webhookEventIdSchema = z
+  .string()
+  .regex(/^zkw_[a-zA-Z0-9_-]+$/, "Expected a zkpay webhook event id");
+
 export const nonceSchema = z
   .string()
   .regex(/^[a-zA-Z0-9_-]{12,96}$/, "Expected a URL-safe nonce");
@@ -158,11 +162,49 @@ export interface ReceiptVerificationResult {
 }
 
 export type PaymentIntentSignatureAlgorithm = "hmac-sha256";
+export type ZkpayWebhookEventType =
+  | "payment.succeeded"
+  | "payment.failed"
+  | "payment.updated";
 
 export interface SignedPaymentIntent {
   intent: PaymentIntent;
   signature: string;
   algorithm: PaymentIntentSignatureAlgorithm;
+}
+
+export const webhookEventSchema = z.object({
+  id: webhookEventIdSchema,
+  type: z.enum(["payment.succeeded", "payment.failed", "payment.updated"]),
+  paymentId: paymentIntentIdSchema,
+  createdAt: z.string().datetime(),
+  intent: paymentIntentSchema.optional(),
+  receipt: paymentReceiptSchema.optional(),
+  data: z.record(z.unknown()).default({}),
+});
+
+export type WebhookEvent = z.infer<typeof webhookEventSchema>;
+
+export interface WebhookEventInput {
+  type: ZkpayWebhookEventType;
+  paymentId: string;
+  intent?: PaymentIntent;
+  receipt?: PaymentReceipt;
+  data?: Record<string, unknown>;
+}
+
+export interface CreateWebhookEventOptions {
+  id?: string;
+  now?: Date | string;
+}
+
+export interface WebhookSignatureOptions {
+  timestamp?: number;
+}
+
+export interface WebhookSignatureVerificationOptions {
+  now?: Date | string | number;
+  toleranceSeconds?: number;
 }
 
 export function createPaymentIntent(
@@ -281,6 +323,81 @@ export function verifyPaymentIntentSignature(
 ): boolean {
   try {
     return timingSafeStringEqual(signature, signPaymentIntent(intent, secret));
+  } catch {
+    return false;
+  }
+}
+
+export function createWebhookEvent(
+  input: WebhookEventInput,
+  options: CreateWebhookEventOptions = {},
+): WebhookEvent {
+  return webhookEventSchema.parse({
+    ...input,
+    id: options.id ?? `zkw_${randomToken(12)}`,
+    createdAt: toIsoString(options.now ?? new Date()),
+  });
+}
+
+export function canonicalizeWebhookEvent(event: WebhookEvent): string {
+  return stableJsonStringify(webhookEventSchema.parse(event));
+}
+
+export function signWebhookEvent(
+  event: WebhookEvent,
+  secret: string,
+  options: WebhookSignatureOptions = {},
+): string {
+  const key = secret.trim();
+
+  if (!key) {
+    throw new Error("Webhook signing secret is required");
+  }
+
+  const timestamp = options.timestamp ?? Math.floor(Date.now() / 1000);
+
+  if (!Number.isInteger(timestamp) || timestamp <= 0) {
+    throw new Error("Webhook signature timestamp must be a positive integer");
+  }
+
+  const signature = createHmac("sha256", key)
+    .update(`${timestamp}.${canonicalizeWebhookEvent(event)}`)
+    .digest("base64url");
+
+  return `t=${timestamp},v1=${signature}`;
+}
+
+export function verifyWebhookSignature(
+  event: WebhookEvent,
+  signatureHeader: string,
+  secret: string,
+  options: WebhookSignatureVerificationOptions = {},
+): boolean {
+  try {
+    const parsed = parseWebhookSignatureHeader(signatureHeader);
+
+    if (!parsed) return false;
+
+    const toleranceSeconds = options.toleranceSeconds ?? 300;
+
+    if (toleranceSeconds >= 0) {
+      const nowSeconds = toUnixSeconds(options.now ?? Date.now());
+
+      if (!Number.isFinite(nowSeconds)) return false;
+
+      const age = Math.abs(nowSeconds - parsed.timestamp);
+
+      if (age > toleranceSeconds) return false;
+    }
+
+    const expected = signWebhookEvent(event, secret, {
+      timestamp: parsed.timestamp,
+    });
+    const expectedSignature = parseWebhookSignatureHeader(expected)?.signature;
+
+    return expectedSignature
+      ? timingSafeStringEqual(parsed.signature, expectedSignature)
+      : false;
   } catch {
     return false;
   }
@@ -468,6 +585,38 @@ function timingSafeStringEqual(left: string, right: string): boolean {
   }
 
   return timingSafeEqual(leftBytes, rightBytes);
+}
+
+function parseWebhookSignatureHeader(
+  value: string,
+): { timestamp: number; signature: string } | null {
+  const parts = new Map(
+    value.split(",").map((part) => {
+      const [key, ...rest] = part.trim().split("=");
+      return [key, rest.join("=")] as const;
+    }),
+  );
+  const timestamp = Number(parts.get("t"));
+  const signature = parts.get("v1");
+
+  if (!Number.isInteger(timestamp) || timestamp <= 0 || !signature) {
+    return null;
+  }
+
+  return {
+    timestamp,
+    signature,
+  };
+}
+
+function toUnixSeconds(value: Date | string | number): number {
+  if (typeof value === "number") {
+    return value > 1_000_000_000_000
+      ? Math.floor(value / 1000)
+      : Math.floor(value);
+  }
+
+  return Math.floor(new Date(value).getTime() / 1000);
 }
 
 function stableJsonStringify(value: unknown): string {

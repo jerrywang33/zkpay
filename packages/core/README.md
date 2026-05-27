@@ -10,10 +10,13 @@ npm install zkpay-sh@next
 import {
   buildHostedCheckoutUrl,
   createPaymentIntent,
+  createWebhookEvent,
   resolveGasRoute,
   signPaymentIntent,
+  signWebhookEvent,
   verifyPaymentIntentSignature,
   verifyPaymentReceipt,
+  verifyWebhookSignature,
 } from "zkpay-sh/core";
 ```
 
@@ -37,6 +40,20 @@ Payment intents can be signed before they are placed in hosted checkout URLs:
 const signature = signPaymentIntent(intent, process.env.ZKPAY_SIGNING_SECRET);
 
 verifyPaymentIntentSignature(intent, signature, process.env.ZKPAY_SIGNING_SECRET);
+```
+
+Webhook events can use the same HMAC boundary:
+
+```ts
+const event = createWebhookEvent({
+  type: "payment.succeeded",
+  paymentId: intent.id,
+  intent,
+  receipt,
+});
+const header = signWebhookEvent(event, process.env.ZKPAY_WEBHOOK_SECRET);
+
+verifyWebhookSignature(event, header, process.env.ZKPAY_WEBHOOK_SECRET);
 ```
 
 Gas routing can use a strict stablecoin registry:

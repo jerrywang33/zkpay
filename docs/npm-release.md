@@ -38,20 +38,20 @@ available. Public installs should use `zkpay-sh/api`.
 The current alpha version is:
 
 ```txt
-0.2.0-alpha.10
+0.2.0-alpha.11
 ```
 
 It is published under the `next` dist-tag. Developer docs should use
 `zkpay-sh@next`; `latest` is not the integration target while the package is in
 alpha.
 
-`0.2.0-alpha.10` adds `zkpay intent verify-signature` so CLI users can verify a
-signed hosted checkout URL from scripts. `0.2.0-alpha.9` lets the CLI create
-signed hosted checkout links through `ZKPAY_SIGNING_SECRET` or
-`--signing-secret`. `0.2.0-alpha.8` added HMAC-signed payment intents across
-core, SDK, API verification, and hosted checkout verify payloads. These build on
-the D1 replay store, checkout runtime options, and optional Sui receipt binding
-work from earlier alpha releases.
+`0.2.0-alpha.11` adds webhook event creation plus HMAC signing and verification
+helpers across core and the SDK. `0.2.0-alpha.10` added
+`zkpay intent verify-signature` so CLI users can verify a signed hosted checkout
+URL from scripts. `0.2.0-alpha.9` lets the CLI create signed hosted checkout
+links through `ZKPAY_SIGNING_SECRET` or `--signing-secret`. These build on the
+D1 replay store, checkout runtime options, signed payment intents, and optional
+Sui receipt binding work from earlier alpha releases.
 
 ## Local Release Flow
 

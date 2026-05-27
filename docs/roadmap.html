@@ -32,6 +32,7 @@
             <a href="v0.1.html">v0.1</a>
             <a href="v0.2.html">v0.2</a>
             <a href="api.html">API</a>
+            <a href="webhooks.html">Webhooks</a>
             <a href="architecture.html">Architecture</a>
             <a href="zklogin.html">zkLogin</a>
             <a href="sui-gas-routing.html">Gas routing</a>
@@ -60,6 +61,7 @@
 <li><code>/payments/verify/sui</code> backend route.</li>
 <li>CLI receipt verification for demos and scripts.</li>
 <li>Optional onchain payment binding through <code>receipt::bind</code> and <code>PaymentBound</code>.</li>
+<li>Signed payment intents and signed webhook event primitives.</li>
 </ul>
 </section><section><h2>v0.2 Next Hardening</h2>
 <ul>
@@ -77,7 +79,7 @@
 <ul>
 <li>Payment Kit-compatible receipt fields.</li>
 <li>Duplicate payment prevention.</li>
-<li>Merchant webhook signing.</li>
+<li>Merchant webhook delivery and retry policy.</li>
 </ul>
 </section><section><h2>v1.0: Merchant Operations</h2>
 <ul>

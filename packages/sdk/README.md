@@ -12,6 +12,7 @@ import { ZkpayClient } from "zkpay-sh";
 const zkpay = new ZkpayClient({
   baseUrl: "https://zkpay.sh",
   signingSecret: process.env.ZKPAY_SIGNING_SECRET,
+  webhookSecret: process.env.ZKPAY_WEBHOOK_SECRET,
   gaslessStablecoins: [
     {
       symbol: "USDC",
@@ -75,6 +76,18 @@ const result = await zkpay.verifySuiPayment({
 The optional `binding` package should expose `receipt::bind`, which emits a
 `PaymentBound` event containing payer, receiver, amount, coin type, payment id,
 and nonce.
+
+Webhook signing is available through the same client:
+
+```ts
+const event = zkpay.createWebhookEvent({
+  type: "payment.succeeded",
+  paymentId: payment.intent.id,
+  intent: payment.intent,
+  receipt,
+});
+const signatureHeader = zkpay.signWebhookEvent(event);
+```
 
 `@zkpay/sdk` remains the workspace package boundary. Public installs use
 `zkpay-sh` until `@zkpay` npm scope access is available.

@@ -36,6 +36,22 @@ const payment = zkpay.createPayment({
 console.log(payment.checkoutUrl);
 ```
 
+Create signed webhook events for merchant fulfillment:
+
+```ts
+const event = zkpay.createWebhookEvent({
+  type: "payment.succeeded",
+  paymentId: payment.intent.id,
+  intent: payment.intent,
+  receipt,
+});
+
+const signatureHeader = zkpay.signWebhookEvent(
+  event,
+  process.env.ZKPAY_WEBHOOK_SECRET,
+);
+```
+
 Build and verify a Sui testnet settlement:
 
 ```ts

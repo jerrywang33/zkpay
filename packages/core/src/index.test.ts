@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   buildHostedCheckoutUrl,
   canonicalizePaymentIntent,
+  canonicalizeWebhookEvent,
   createSignedPaymentIntent,
   createPaymentIntent,
+  createWebhookEvent,
   findGaslessStablecoinAsset,
   formatPaymentUri,
   isPaymentIntentExpired,
@@ -12,8 +14,10 @@ import {
   parsePaymentUri,
   resolveGasRoute,
   signPaymentIntent,
+  signWebhookEvent,
   verifyPaymentIntentSignature,
   verifyPaymentReceipt,
+  verifyWebhookSignature,
   type PaymentIntent,
   type PaymentReceipt,
 } from "./index.js";
@@ -137,6 +141,74 @@ describe("@zkpay/core", () => {
     );
     expect(signed.algorithm).toBe("hmac-sha256");
     expect(signed.signature).toHaveLength(43);
+  });
+
+  it("signs and verifies webhook events", () => {
+    const intent = makeIntent();
+    const receipt = makeReceipt(intent);
+    const event = createWebhookEvent(
+      {
+        type: "payment.succeeded",
+        paymentId: intent.id,
+        intent,
+        receipt,
+        data: {
+          orderId: "ord_123",
+        },
+      },
+      {
+        id: "zkw_test123",
+        now: "2026-05-25T01:01:00.000Z",
+      },
+    );
+    const signature = signWebhookEvent(event, "webhook_secret", {
+      timestamp: 1_779_664_860,
+    });
+
+    expect(canonicalizeWebhookEvent(event)).toContain(
+      '"type":"payment.succeeded"',
+    );
+    expect(signature).toMatch(/^t=1779664860,v1=/);
+    expect(
+      verifyWebhookSignature(event, signature, "webhook_secret", {
+        now: 1_779_664_870_000,
+      }),
+    ).toBe(true);
+    expect(
+      verifyWebhookSignature(
+        { ...event, paymentId: "zkp_other123" },
+        signature,
+        "webhook_secret",
+        {
+          now: 1_779_664_870_000,
+        },
+      ),
+    ).toBe(false);
+  });
+
+  it("rejects stale webhook signatures", () => {
+    const intent = makeIntent();
+    const event = createWebhookEvent(
+      {
+        type: "payment.updated",
+        paymentId: intent.id,
+        intent,
+      },
+      {
+        id: "zkw_test124",
+        now: "2026-05-25T01:01:00.000Z",
+      },
+    );
+    const signature = signWebhookEvent(event, "webhook_secret", {
+      timestamp: 1_779_664_000,
+    });
+
+    expect(
+      verifyWebhookSignature(event, signature, "webhook_secret", {
+        now: 1_779_665_000_000,
+        toleranceSeconds: 300,
+      }),
+    ).toBe(false);
   });
 
   it("adds Sui checkout runtime parameters to hosted checkout URLs", () => {

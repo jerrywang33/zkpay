@@ -1,5 +1,6 @@
 import {
   buildHostedCheckoutUrl,
+  createWebhookEvent,
   createPaymentIntent,
   findGaslessStablecoinAsset,
   formatPaymentUri,
@@ -8,8 +9,11 @@ import {
   parsePaymentUri,
   resolveGasRoute,
   signPaymentIntent,
+  signWebhookEvent,
   verifyPaymentIntentSignature,
   verifyPaymentReceipt,
+  verifyWebhookSignature,
+  type CreateWebhookEventOptions,
   type CreatePaymentIntentOptions,
   type GasRouteDecision,
   type GaslessStablecoinAsset,
@@ -20,6 +24,10 @@ import {
   type PaymentReceipt,
   type ReceiptVerificationOptions,
   type ReceiptVerificationResult,
+  type WebhookEvent,
+  type WebhookEventInput,
+  type WebhookSignatureOptions,
+  type WebhookSignatureVerificationOptions,
 } from "@zkpay/core";
 import {
   SuiReceiptVerifier,
@@ -36,6 +44,7 @@ export interface ZkpayClientOptions {
   sponsorEnabled?: boolean;
   gaslessStablecoins?: readonly GaslessStablecoinAsset[];
   signingSecret?: string;
+  webhookSecret?: string;
   sui?: SuiReceiptVerifierOptions;
 }
 
@@ -60,6 +69,7 @@ export class ZkpayClient {
   private readonly sponsorEnabled: boolean;
   private readonly gaslessStablecoins?: readonly GaslessStablecoinAsset[];
   private readonly signingSecret?: string;
+  private readonly webhookSecret?: string;
   private readonly sui?: SuiReceiptVerifierOptions;
 
   constructor(options: ZkpayClientOptions = {}) {
@@ -67,6 +77,7 @@ export class ZkpayClient {
     this.sponsorEnabled = options.sponsorEnabled ?? true;
     this.gaslessStablecoins = options.gaslessStablecoins;
     this.signingSecret = options.signingSecret;
+    this.webhookSecret = options.webhookSecret;
     this.sui = options.sui;
   }
 
@@ -142,6 +153,36 @@ export class ZkpayClient {
     options: ReceiptVerificationOptions = {},
   ): ReceiptVerificationResult {
     return verifyPaymentReceipt(intent, receipt, options);
+  }
+
+  createWebhookEvent(
+    input: WebhookEventInput,
+    options: CreateWebhookEventOptions = {},
+  ): WebhookEvent {
+    return createWebhookEvent(input, options);
+  }
+
+  signWebhookEvent(
+    event: WebhookEvent,
+    secret = this.webhookSecret,
+    options: WebhookSignatureOptions = {},
+  ): string {
+    if (!secret) {
+      throw new Error("Webhook signing secret is required");
+    }
+
+    return signWebhookEvent(event, secret, options);
+  }
+
+  verifyWebhookSignature(
+    event: WebhookEvent,
+    signatureHeader: string,
+    secret = this.webhookSecret,
+    options: WebhookSignatureVerificationOptions = {},
+  ): boolean {
+    if (!secret) return false;
+
+    return verifyWebhookSignature(event, signatureHeader, secret, options);
   }
 
   buildSuiPaymentTransaction(

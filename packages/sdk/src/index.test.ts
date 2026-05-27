@@ -222,6 +222,67 @@ describe("@zkpay/sdk", () => {
     });
   });
 
+  it("creates and verifies signed webhook events", () => {
+    const client = new ZkpayClient({
+      webhookSecret: "webhook_secret",
+    });
+    const payment = client.createPayment(
+      {
+        amount: "20",
+        coin: "USDC",
+        receiver: "0x84f",
+        label: "API credits",
+      },
+      {
+        id: "zkp_webhook123",
+        nonce: "nonce_webhook123",
+        now: "2026-05-25T00:00:00.000Z",
+      },
+    );
+    const receipt: PaymentReceipt = {
+      paymentId: payment.intent.id,
+      status: "succeeded",
+      txDigest: "9T9T9T9T9T9T9T9T",
+      amount: payment.intent.amount,
+      coin: payment.intent.coin,
+      receiver: payment.intent.receiver,
+      nonce: payment.intent.nonce,
+      settledAt: "2026-05-25T01:00:00.000Z",
+    };
+    const event = client.createWebhookEvent(
+      {
+        type: "payment.succeeded",
+        paymentId: payment.intent.id,
+        intent: payment.intent,
+        receipt,
+      },
+      {
+        id: "zkw_sdk123",
+        now: "2026-05-25T01:01:00.000Z",
+      },
+    );
+    const signature = client.signWebhookEvent(event, undefined, {
+      timestamp: 1_779_664_860,
+    });
+
+    expect(signature).toMatch(/^t=1779664860,v1=/);
+    expect(
+      client.verifyWebhookSignature(event, signature, undefined, {
+        now: 1_779_664_870_000,
+      }),
+    ).toBe(true);
+    expect(
+      client.verifyWebhookSignature(
+        { ...event, paymentId: "zkp_other123" },
+        signature,
+        undefined,
+        {
+          now: 1_779_664_870_000,
+        },
+      ),
+    ).toBe(false);
+  });
+
   it("converts decimal Sui payment amounts into atomic units", () => {
     expect(decimalToAtomicAmount("20", 6)).toBe("20000000");
     expect(decimalToAtomicAmount("0.25", 6)).toBe("250000");

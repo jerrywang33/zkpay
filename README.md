@@ -162,6 +162,9 @@ Payment intents can also be HMAC-signed before they are sent through hosted
 checkout URLs. This gives merchant backends a simple way to reject tampered
 amount, receiver, nonce, or metadata fields before fulfillment.
 
+Webhook events can be HMAC-signed with `ZKPAY_WEBHOOK_SECRET`, giving merchant
+systems a second verification boundary for asynchronous fulfillment events.
+
 The CLI reads `ZKPAY_SIGNING_SECRET` for signed hosted checkout links:
 
 ```bash

@@ -20,6 +20,7 @@
 - `/payments/verify/sui` backend route.
 - CLI receipt verification for demos and scripts.
 - Optional onchain payment binding through `receipt::bind` and `PaymentBound`.
+- Signed payment intents and signed webhook event primitives.
 
 ## v0.2 Next Hardening
 
@@ -37,7 +38,7 @@
 
 - Payment Kit-compatible receipt fields.
 - Duplicate payment prevention.
-- Merchant webhook signing.
+- Merchant webhook delivery and retry policy.
 
 ## v1.0: Merchant Operations
 

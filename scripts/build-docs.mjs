@@ -21,6 +21,12 @@ const pages = [
     description: "Hono API routes for creating payments and verifying receipts.",
   },
   {
+    input: "docs/webhooks.md",
+    output: "docs/webhooks.html",
+    title: "Webhooks",
+    description: "Webhook event shape and HMAC signature verification for merchant fulfillment.",
+  },
+  {
     input: "docs/architecture.md",
     output: "docs/architecture.html",
     title: "Architecture",
@@ -121,6 +127,7 @@ function renderSideNav(currentOutput) {
     ["v0.1", "docs/v0.1.html"],
     ["v0.2", "docs/v0.2.html"],
     ["API", "docs/api.html"],
+    ["Webhooks", "docs/webhooks.html"],
     ["Architecture", "docs/architecture.html"],
     ["zkLogin", "docs/zklogin.html"],
     ["Gas routing", "docs/sui-gas-routing.html"],

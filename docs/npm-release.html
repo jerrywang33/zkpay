@@ -32,6 +32,7 @@
             <a href="v0.1.html">v0.1</a>
             <a href="v0.2.html">v0.2</a>
             <a href="api.html">API</a>
+            <a href="webhooks.html">Webhooks</a>
             <a href="architecture.html">Architecture</a>
             <a href="zklogin.html">zkLogin</a>
             <a href="sui-gas-routing.html">Gas routing</a>
@@ -57,9 +58,9 @@ zkpay-sh       CLI binary alias</code></pre>
 <p><code>@zkpay/api</code> remains an internal workspace package until <code>@zkpay</code> scope access is available. Public installs should use <code>zkpay-sh/api</code>.</p>
 </section><section><h2>Versioning</h2>
 <p>The current alpha version is:</p>
-<pre><code class="language-txt">0.2.0-alpha.10</code></pre>
+<pre><code class="language-txt">0.2.0-alpha.11</code></pre>
 <p>It is published under the <code>next</code> dist-tag. Developer docs should use <code>zkpay-sh@next</code>; <code>latest</code> is not the integration target while the package is in alpha.</p>
-<p><code>0.2.0-alpha.10</code> adds <code>zkpay intent verify-signature</code> so CLI users can verify a signed hosted checkout URL from scripts. <code>0.2.0-alpha.9</code> lets the CLI create signed hosted checkout links through <code>ZKPAY_SIGNING_SECRET</code> or <code>--signing-secret</code>. <code>0.2.0-alpha.8</code> added HMAC-signed payment intents across core, SDK, API verification, and hosted checkout verify payloads. These build on the D1 replay store, checkout runtime options, and optional Sui receipt binding work from earlier alpha releases.</p>
+<p><code>0.2.0-alpha.11</code> adds webhook event creation plus HMAC signing and verification helpers across core and the SDK. <code>0.2.0-alpha.10</code> added <code>zkpay intent verify-signature</code> so CLI users can verify a signed hosted checkout URL from scripts. <code>0.2.0-alpha.9</code> lets the CLI create signed hosted checkout links through <code>ZKPAY_SIGNING_SECRET</code> or <code>--signing-secret</code>. These build on the D1 replay store, checkout runtime options, signed payment intents, and optional Sui receipt binding work from earlier alpha releases.</p>
 </section><section><h2>Local Release Flow</h2>
 <pre><code class="language-bash">npm install
 npm run check

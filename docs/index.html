@@ -42,6 +42,7 @@
             <a href="#model">Payment model</a>
             <a href="#guides">Guides</a>
             <a href="#api">API</a>
+            <a href="#webhooks">Webhooks</a>
             <a href="#cli">CLI</a>
           </aside>
 
@@ -156,6 +157,10 @@ const result = await zkpay.verifySuiPayment({
                   <strong>Sui Gas Routing</strong>
                   <p>Gasless stablecoin route, sponsor fallback, and payer fallback.</p>
                 </a>
+                <a class="page-card" href="./webhooks.html">
+                  <strong>Webhooks</strong>
+                  <p>Signed payment events for merchant fulfillment and reconciliation.</p>
+                </a>
                 <a class="page-card" href="./npm-release.html">
                   <strong>npm Release</strong>
                   <p>Build, pack, and publish the public alpha package under the next tag.</p>
@@ -186,6 +191,24 @@ POST /payments
 POST /payments/verify
 POST /payments/verify/sui</code></pre>
               <p><a href="./api.html">Open API reference</a></p>
+            </section>
+
+            <section id="webhooks">
+              <h2>Webhooks</h2>
+              <p>
+                Webhook events use <code>t=...,v1=...</code> HMAC headers so
+                merchant systems can verify asynchronous payment events before
+                fulfillment, ledger updates, or reconciliation.
+              </p>
+              <pre><code>const event = zkpay.createWebhookEvent({
+  type: "payment.succeeded",
+  paymentId: payment.intent.id,
+  intent: payment.intent,
+  receipt
+});
+
+const signatureHeader = zkpay.signWebhookEvent(event);</code></pre>
+              <p><a href="./webhooks.html">Open webhook guide</a></p>
             </section>
 
             <section id="cli">
