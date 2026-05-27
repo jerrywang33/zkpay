@@ -28,6 +28,7 @@
 - Webhook endpoint management API.
 - Endpoint-specific webhook signing secrets and redacted management responses.
 - Manual webhook endpoint test delivery API.
+- Optional management API key guard for endpoint and delivery-log routes.
 - In-memory and D1 webhook delivery log stores.
 - Delivery log query API by payment id or event id.
 

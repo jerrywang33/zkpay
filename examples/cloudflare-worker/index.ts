@@ -14,6 +14,7 @@ type WorkerExecutionContext = Parameters<
 interface Env {
   ZKPAY_REPLAY: D1DatabaseLike;
   ZKPAY_BASE_URL?: string;
+  ZKPAY_MANAGEMENT_API_KEY?: string;
   ZKPAY_WEBHOOK_SECRET?: string;
   ZKPAY_WEBHOOK_URL?: string;
 }
@@ -38,6 +39,7 @@ export default {
 
     const app = createZkpayApi({
       baseUrl: env.ZKPAY_BASE_URL ?? "https://zkpay.sh",
+      managementApiKey: env.ZKPAY_MANAGEMENT_API_KEY,
       replayStore: createD1SuiReplayStore(env.ZKPAY_REPLAY),
       webhookSecret: env.ZKPAY_WEBHOOK_SECRET,
       webhookDispatcher,

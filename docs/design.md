@@ -560,6 +560,7 @@ the current static marketing page.
 - in-memory and D1 webhook endpoint registries;
 - webhook endpoint management API;
 - endpoint-specific webhook signing secrets and manual test delivery;
+- optional management API key guard for endpoint and delivery-log routes;
 - in-memory and D1 webhook delivery log stores;
 - delivery log query API by payment id or event id;
 - merchant-side digest replay storage still required.

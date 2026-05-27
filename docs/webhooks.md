@@ -139,6 +139,7 @@ import {
 const webhookEndpointStore = createD1WebhookEndpointRegistry(env.DB);
 
 const app = createZkpayApi({
+  managementApiKey: process.env.ZKPAY_MANAGEMENT_API_KEY,
   webhookSecret: process.env.ZKPAY_WEBHOOK_SECRET,
   webhookEndpointStore,
   webhookDispatcher: createHttpWebhookDispatcher({
@@ -172,7 +173,9 @@ When `webhookEndpointStore` is configured, the API also exposes
 responses redact sensitive headers and only expose `hasSigningSecret`.
 `POST /webhooks/endpoints/:id/test` sends one signed `payment.updated` test
 event to the stored endpoint URL. These routes are alpha primitives and should
-sit behind merchant authentication in production.
+sit behind merchant authentication in production. Use `managementApiKey` or
+`managementApiKeys` to require `Authorization: Bearer ...` or
+`x-zkpay-api-key` for these routes and delivery log queries.
 
 Delivery logs can be queried from the same API when the configured store
 supports listing:

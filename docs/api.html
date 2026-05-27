@@ -185,6 +185,7 @@
 const webhookEndpointStore = createD1WebhookEndpointRegistry(env.DB);
 
 const app = createZkpayApi({
+  managementApiKey: process.env.ZKPAY_MANAGEMENT_API_KEY,
   webhookSecret: process.env.ZKPAY_WEBHOOK_SECRET,
   webhookEndpointStore,
   webhookDispatcher: createHttpWebhookDispatcher({
@@ -219,6 +220,20 @@ const app = createZkpayApi({
   }
 }</code></pre>
 <p>The delivery log store is best-effort. If it fails, verification responses still return the signed webhook event and delivery results with <code>webhookDeliveryLog</code> set to a failed log status.</p>
+<h3>Management route auth</h3>
+<p><code>managementApiKey</code> or <code>managementApiKeys</code> can protect webhook endpoint management and delivery log queries:</p>
+<pre><code class="language-ts">const app = createZkpayApi({
+  managementApiKey: process.env.ZKPAY_MANAGEMENT_API_KEY,
+  webhookEndpointStore,
+  webhookDeliveryStore,
+});</code></pre>
+<p>Send either header on management requests:</p>
+<pre><code class="language-bash">curl &quot;https://api.example.com/webhooks/endpoints&quot; \
+  -H &quot;authorization: Bearer $ZKPAY_MANAGEMENT_API_KEY&quot;
+
+curl &quot;https://api.example.com/webhooks/deliveries?paymentId=zkp_...&quot; \
+  -H &quot;x-zkpay-api-key: $ZKPAY_MANAGEMENT_API_KEY&quot;</code></pre>
+<p>Missing or invalid keys return <code>401</code> with <code>management_api_key_missing</code> or <code>management_api_key_invalid</code>. Payment creation and verification routes are not protected by this guard.</p>
 <p><code>endpointRegistry</code> lets the dispatcher resolve targets per webhook event instead of hardcoding every URL in process config. The built-in memory registry and D1 registry support optional <code>merchantId</code> and <code>eventTypes</code> filters. For D1, store the merchant id in <code>PaymentIntent.metadata.merchantId</code>; global endpoints use a null <code>merchant_id</code> and receive matching events for every merchant.</p>
 <h3><code>POST /webhooks/endpoints</code></h3>
 <p>When <code>webhookEndpointStore</code> is configured, merchant systems can create managed webhook endpoints:</p>
@@ -317,6 +332,7 @@ const webhookEndpointStore = createD1WebhookEndpointRegistry(env.DB);
 
 const app = createZkpayApi({
   replayStore: createD1SuiReplayStore(env.DB),
+  managementApiKey: env.ZKPAY_MANAGEMENT_API_KEY,
   webhookEndpointStore,
   webhookDispatcher: createHttpWebhookDispatcher({
     endpointRegistry: webhookEndpointStore,

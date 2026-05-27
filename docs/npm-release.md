@@ -38,14 +38,16 @@ available. Public installs should use `zkpay-sh/api`.
 The current alpha version is:
 
 ```txt
-0.2.0-alpha.20
+0.2.0-alpha.21
 ```
 
 It is published under the `next` dist-tag. Developer docs should use
 `zkpay-sh@next`; `latest` is not the integration target while the package is in
 alpha.
 
-`0.2.0-alpha.20` adds endpoint-specific webhook signing secrets, redacted
+`0.2.0-alpha.21` adds an optional management API key guard for webhook endpoint
+management and delivery-log query routes. `0.2.0-alpha.20` added
+endpoint-specific webhook signing secrets, redacted
 endpoint management responses, and `POST /webhooks/endpoints/:id/test` for
 manual signed delivery checks. `0.2.0-alpha.19` added webhook endpoint
 management routes backed by the in-memory and D1 endpoint stores.

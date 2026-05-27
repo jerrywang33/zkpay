@@ -25,6 +25,7 @@ const webhookDispatcher = env.ZKPAY_WEBHOOK_SECRET
 
 const app = createZkpayApi({
   replayStore: createD1SuiReplayStore(env.ZKPAY_REPLAY),
+  managementApiKey: env.ZKPAY_MANAGEMENT_API_KEY,
   webhookSecret: env.ZKPAY_WEBHOOK_SECRET,
   webhookDispatcher,
   webhookEndpointStore,
@@ -52,7 +53,8 @@ Worker secret.
 The same D1 table powers `POST /webhooks/endpoints`,
 `GET /webhooks/endpoints`, `PATCH /webhooks/endpoints/:id`, and
 `POST /webhooks/endpoints/:id/test` for trusted merchant backend or dashboard
-use.
+use. Set `ZKPAY_MANAGEMENT_API_KEY` to require `Authorization: Bearer ...` or
+`x-zkpay-api-key` on those management routes and delivery log queries.
 
 The Worker stays non-custodial. Merchant fulfillment should happen after the
 backend receives a successful verification response.

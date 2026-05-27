@@ -213,6 +213,7 @@ import {
 const webhookEndpointStore = createD1WebhookEndpointRegistry(env.DB);
 
 const app = createZkpayApi({
+  managementApiKey: process.env.ZKPAY_MANAGEMENT_API_KEY,
   webhookSecret: process.env.ZKPAY_WEBHOOK_SECRET,
   webhookEndpointStore,
   webhookDispatcher: createHttpWebhookDispatcher({
@@ -255,6 +256,33 @@ Delivery result:
 The delivery log store is best-effort. If it fails, verification responses still
 return the signed webhook event and delivery results with `webhookDeliveryLog`
 set to a failed log status.
+
+### Management route auth
+
+`managementApiKey` or `managementApiKeys` can protect webhook endpoint
+management and delivery log queries:
+
+```ts
+const app = createZkpayApi({
+  managementApiKey: process.env.ZKPAY_MANAGEMENT_API_KEY,
+  webhookEndpointStore,
+  webhookDeliveryStore,
+});
+```
+
+Send either header on management requests:
+
+```bash
+curl "https://api.example.com/webhooks/endpoints" \
+  -H "authorization: Bearer $ZKPAY_MANAGEMENT_API_KEY"
+
+curl "https://api.example.com/webhooks/deliveries?paymentId=zkp_..." \
+  -H "x-zkpay-api-key: $ZKPAY_MANAGEMENT_API_KEY"
+```
+
+Missing or invalid keys return `401` with `management_api_key_missing` or
+`management_api_key_invalid`. Payment creation and verification routes are not
+protected by this guard.
 
 `endpointRegistry` lets the dispatcher resolve targets per webhook event instead
 of hardcoding every URL in process config. The built-in memory registry and D1
@@ -420,6 +448,7 @@ const webhookEndpointStore = createD1WebhookEndpointRegistry(env.DB);
 
 const app = createZkpayApi({
   replayStore: createD1SuiReplayStore(env.DB),
+  managementApiKey: env.ZKPAY_MANAGEMENT_API_KEY,
   webhookEndpointStore,
   webhookDispatcher: createHttpWebhookDispatcher({
     endpointRegistry: webhookEndpointStore,

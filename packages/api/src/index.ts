@@ -772,6 +772,8 @@ export interface ZkpayApiOptions extends ZkpayClientOptions {
   webhookDeliveryStore?: WebhookDeliveryStore | false;
   webhookEndpointStore?: WebhookEndpointStore | false;
   webhookTestFetch?: typeof globalThis.fetch;
+  managementApiKey?: string;
+  managementApiKeys?: readonly string[];
 }
 
 export interface SignedWebhookEvent {
@@ -878,6 +880,17 @@ export function createZkpayApi(options: ZkpayApiOptions = {}): Hono {
   );
 
   app.get("/webhooks/deliveries", async (context) => {
+    const authError = verifyManagementApiKey(context.req, options);
+
+    if (authError) {
+      return context.json(
+        {
+          error: authError,
+        },
+        401,
+      );
+    }
+
     const store = options.webhookDeliveryStore;
 
     if (!store || !store.list) {
@@ -917,6 +930,17 @@ export function createZkpayApi(options: ZkpayApiOptions = {}): Hono {
   });
 
   app.get("/webhooks/endpoints", async (context) => {
+    const authError = verifyManagementApiKey(context.req, options);
+
+    if (authError) {
+      return context.json(
+        {
+          error: authError,
+        },
+        401,
+      );
+    }
+
     const store = options.webhookEndpointStore;
 
     if (!store) {
@@ -956,6 +980,17 @@ export function createZkpayApi(options: ZkpayApiOptions = {}): Hono {
   });
 
   app.post("/webhooks/endpoints", async (context) => {
+    const authError = verifyManagementApiKey(context.req, options);
+
+    if (authError) {
+      return context.json(
+        {
+          error: authError,
+        },
+        401,
+      );
+    }
+
     const store = options.webhookEndpointStore;
 
     if (!store) {
@@ -1002,6 +1037,17 @@ export function createZkpayApi(options: ZkpayApiOptions = {}): Hono {
   });
 
   app.patch("/webhooks/endpoints/:id", async (context) => {
+    const authError = verifyManagementApiKey(context.req, options);
+
+    if (authError) {
+      return context.json(
+        {
+          error: authError,
+        },
+        401,
+      );
+    }
+
     const store = options.webhookEndpointStore;
 
     if (!store) {
@@ -1066,6 +1112,17 @@ export function createZkpayApi(options: ZkpayApiOptions = {}): Hono {
   });
 
   app.post("/webhooks/endpoints/:id/test", async (context) => {
+    const authError = verifyManagementApiKey(context.req, options);
+
+    if (authError) {
+      return context.json(
+        {
+          error: authError,
+        },
+        401,
+      );
+    }
+
     const store = options.webhookEndpointStore;
 
     if (!store) {
@@ -1361,6 +1418,51 @@ async function readOptionalJson(context: {
   } catch {
     return {};
   }
+}
+
+function verifyManagementApiKey(
+  request: { header(name: string): string | undefined },
+  options: ZkpayApiOptions,
+): "management_api_key_missing" | "management_api_key_invalid" | null {
+  const keys = [
+    ...(options.managementApiKey ? [options.managementApiKey] : []),
+    ...(options.managementApiKeys ?? []),
+  ]
+    .map((key) => key.trim())
+    .filter(Boolean);
+
+  if (keys.length === 0) return null;
+
+  const suppliedKey =
+    readBearerToken(request.header("authorization")) ??
+    request.header("x-zkpay-api-key")?.trim();
+
+  if (!suppliedKey) return "management_api_key_missing";
+
+  let matched = false;
+
+  for (const key of keys) {
+    matched = constantTimeStringEqual(key, suppliedKey) || matched;
+  }
+
+  return matched ? null : "management_api_key_invalid";
+}
+
+function readBearerToken(value: string | undefined): string | undefined {
+  const match = value?.match(/^Bearer\s+(.+)$/i);
+
+  return match?.[1]?.trim() || undefined;
+}
+
+function constantTimeStringEqual(left: string, right: string): boolean {
+  const length = Math.max(left.length, right.length);
+  let diff = left.length ^ right.length;
+
+  for (let index = 0; index < length; index += 1) {
+    diff |= (left.charCodeAt(index) || 0) ^ (right.charCodeAt(index) || 0);
+  }
+
+  return diff === 0;
 }
 
 function publicWebhookEndpoint(

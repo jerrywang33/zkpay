@@ -202,6 +202,8 @@ POST /webhooks/endpoints/:id/test</code></pre>
                 fulfillment, ledger updates, or reconciliation. Managed
                 endpoints can also carry their own signing secret and send a
                 signed test event before production orders depend on them.
+                Management routes can require a Bearer token or
+                <code>x-zkpay-api-key</code>.
               </p>
               <pre><code>const event = zkpay.createWebhookEvent({
   type: "payment.succeeded",

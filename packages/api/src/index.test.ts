@@ -995,6 +995,96 @@ describe("@zkpay/api", () => {
     });
   });
 
+  it("protects management routes with an optional API key", async () => {
+    const endpointStore = new InMemoryWebhookEndpointRegistry();
+    const app = createZkpayApi({
+      managementApiKey: "management_secret",
+      webhookEndpointStore: endpointStore,
+    });
+    const missingResponse = await app.request("/webhooks/endpoints");
+    const invalidResponse = await app.request("/webhooks/endpoints", {
+      headers: {
+        "x-zkpay-api-key": "wrong_secret",
+      },
+    });
+    const createResponse = await app.request("/webhooks/endpoints", {
+      method: "POST",
+      headers: {
+        authorization: "Bearer management_secret",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        id: "endpoint_auth",
+        url: "https://merchant.example/webhooks/auth",
+      }),
+    });
+    const createJson = await createResponse.json();
+
+    expect(missingResponse.status).toBe(401);
+    expect(await missingResponse.json()).toEqual({
+      error: "management_api_key_missing",
+    });
+    expect(invalidResponse.status).toBe(401);
+    expect(await invalidResponse.json()).toEqual({
+      error: "management_api_key_invalid",
+    });
+    expect(createResponse.status).toBe(201);
+    expect(createJson.endpoint).toMatchObject({
+      id: "endpoint_auth",
+    });
+  });
+
+  it("accepts rotated management API keys for delivery queries", async () => {
+    const deliveryStore = new InMemoryWebhookDeliveryStore();
+    deliveryStore.record({
+      eventId: "zkw_rotation",
+      paymentId: "zkp_rotation",
+      eventType: "payment.succeeded",
+      ok: true,
+      status: 202,
+      attemptCount: 1,
+      completedAt: "2026-05-25T01:02:00.000Z",
+    });
+    const app = createZkpayApi({
+      managementApiKeys: ["old_secret", "new_secret"],
+      webhookDeliveryStore: deliveryStore,
+    });
+    const response = await app.request("/webhooks/deliveries", {
+      headers: {
+        "x-zkpay-api-key": "new_secret",
+      },
+    });
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json.deliveries).toHaveLength(1);
+    expect(json.deliveries[0]).toMatchObject({
+      eventId: "zkw_rotation",
+    });
+  });
+
+  it("does not apply management API keys to payment creation", async () => {
+    const app = createZkpayApi({
+      managementApiKey: "management_secret",
+    });
+    const response = await app.request("/payments", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        payment: {
+          amount: "20",
+          coin: "USDC",
+          receiver: "0x84f",
+          label: "API credits",
+        },
+      }),
+    });
+
+    expect(response.status).toBe(201);
+  });
+
   it("returns unavailable when webhook endpoint management is not configured", async () => {
     const app = createZkpayApi();
     const response = await app.request("/webhooks/endpoints");

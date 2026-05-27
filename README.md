@@ -173,6 +173,9 @@ merchant or event type and powers `POST/GET/PATCH /webhooks/endpoints` when used
 as `webhookEndpointStore`. Managed endpoints can carry their own signing secret,
 return redacted headers through management responses, and support
 `POST /webhooks/endpoints/:id/test` for one-click test delivery.
+Set `managementApiKey` or `managementApiKeys` on `createZkpayApi` to require a
+Bearer token or `x-zkpay-api-key` for endpoint management and delivery log
+queries without blocking payment creation or verification.
 `createD1WebhookDeliveryStore` records delivery attempts for Cloudflare D1
 deployments and powers `GET /webhooks/deliveries` queries by payment id or event
 id.

@@ -95,6 +95,9 @@ the dispatcher load endpoints per merchant/event and can also power
 `PATCH /webhooks/endpoints/:id`. Endpoint management responses redact sensitive
 headers, expose only `hasSigningSecret`, and support
 `POST /webhooks/endpoints/:id/test` for signed manual delivery checks.
+Set `managementApiKey` or `managementApiKeys` in `createZkpayApi` to require
+`Authorization: Bearer ...` or `x-zkpay-api-key` on those management routes and
+delivery log queries.
 `createD1WebhookDeliveryStore` records delivery attempts and supports
 `GET /webhooks/deliveries` queries for reconciliation and operations.
 

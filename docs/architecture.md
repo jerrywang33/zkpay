@@ -61,6 +61,6 @@ v0.2 connects hosted checkout, the SDK, and the API to a Sui testnet settlement
 loop. The default replay store is in-process memory for demos; durable replay
 storage, webhook endpoint registries, endpoint management routes, webhook
 delivery storage, endpoint-specific webhook signing secrets, manual test
-delivery, and a queryable delivery log API are available as alpha primitives.
-zkLogin proving, merchant endpoint management UI, and a canonical deployed
-receipt package remain the next integration layers.
+delivery, optional management API key guards, and a queryable delivery log API
+are available as alpha primitives. zkLogin proving, merchant endpoint management
+UI, and a canonical deployed receipt package remain the next integration layers.

@@ -41,6 +41,7 @@ import {
 const webhookEndpointStore = createD1WebhookEndpointRegistry(env.DB);
 
 const app = createZkpayApi({
+  managementApiKey: process.env.ZKPAY_MANAGEMENT_API_KEY,
   webhookSecret: process.env.ZKPAY_WEBHOOK_SECRET,
   webhookEndpointStore,
   webhookDispatcher: createHttpWebhookDispatcher({
@@ -72,6 +73,11 @@ Configured delivery stores can be queried through
 `GET /webhooks/deliveries?eventId=evt_...` for reconciliation and operations
 views.
 
+Set `managementApiKey` or `managementApiKeys` to require
+`Authorization: Bearer ...` or `x-zkpay-api-key` on webhook endpoint management
+routes and delivery log queries. Payment creation and verification routes remain
+unprotected by this management guard.
+
 `POST /payments` also accepts `options.checkout` so merchant backends can
 generate hosted checkout URLs with `network`, `coinType`, `decimals`, and
 `bindingPackageId` already attached.
@@ -92,6 +98,7 @@ const webhookEndpointStore = createD1WebhookEndpointRegistry(env.DB);
 
 const app = createZkpayApi({
   replayStore: createD1SuiReplayStore(env.DB),
+  managementApiKey: env.ZKPAY_MANAGEMENT_API_KEY,
   webhookEndpointStore,
   webhookDispatcher: createHttpWebhookDispatcher({
     endpointRegistry: webhookEndpointStore,

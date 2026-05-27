@@ -192,8 +192,8 @@ function render() {
               <code>npm install zkpay-sh@next</code>
             </button>
             <div class="release-note">
-              <span>0.2.0-alpha.20</span>
-              <span>Managed webhooks now support endpoint-specific signing secrets, redacted responses, and manual test delivery.</span>
+              <span>0.2.0-alpha.21</span>
+              <span>Management routes can now require Bearer or x-zkpay-api-key auth for safer dashboard and Worker deployments.</span>
             </div>
           </div>
 
@@ -296,7 +296,8 @@ function render() {
               The public alpha is live as <strong>zkpay-sh@next</strong>. It bundles the
               SDK, core primitives, CLI, Sui transaction builder, hosted wallet
               handoff, RPC receipt verifier, and managed webhook APIs while the
-              merchant keeps custody and fulfillment logic.
+              merchant keeps custody and fulfillment logic. Management routes
+              can be protected with an opt-in API key guard.
             </p>
           </div>
           <div class="code-stack">
@@ -368,7 +369,7 @@ if (!result.ok) throw new Error(result.errors.join(", "));</code></pre>
             <article class="code-panel">
               <div class="code-head">
                 <span>Webhook endpoint</span>
-                <button type="button" data-copy="curl -X POST https://api.example.com/webhooks/endpoints/endpoint_acme/test -H 'content-type: application/json' -d '{&quot;paymentId&quot;:&quot;zkp_webhook_test&quot;,&quot;data&quot;:{&quot;reason&quot;:&quot;manual-test&quot;}}'">Copy</button>
+                <button type="button" data-copy="curl -X POST https://api.example.com/webhooks/endpoints/endpoint_acme/test -H 'authorization: Bearer zkpay_mgmt_...' -H 'content-type: application/json' -d '{&quot;paymentId&quot;:&quot;zkp_webhook_test&quot;,&quot;data&quot;:{&quot;reason&quot;:&quot;manual-test&quot;}}'">Copy</button>
               </div>
               <pre><code>await api.request("/webhooks/endpoints", {
   method: "POST",
@@ -381,7 +382,10 @@ if (!result.ok) throw new Error(result.errors.join(", "));</code></pre>
 });
 
 await api.request("/webhooks/endpoints/endpoint_acme/test", {
-  method: "POST"
+  method: "POST",
+  headers: {
+    authorization: "Bearer zkpay_mgmt_..."
+  }
 });</code></pre>
             </article>
             <article class="code-panel">
