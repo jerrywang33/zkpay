@@ -58,9 +58,9 @@ zkpay-sh       CLI binary alias</code></pre>
 <p><code>@zkpay/api</code> remains an internal workspace package until <code>@zkpay</code> scope access is available. Public installs should use <code>zkpay-sh/api</code>.</p>
 </section><section><h2>Versioning</h2>
 <p>The current alpha version is:</p>
-<pre><code class="language-txt">0.2.0-alpha.11</code></pre>
+<pre><code class="language-txt">0.2.0-alpha.12</code></pre>
 <p>It is published under the <code>next</code> dist-tag. Developer docs should use <code>zkpay-sh@next</code>; <code>latest</code> is not the integration target while the package is in alpha.</p>
-<p><code>0.2.0-alpha.11</code> adds webhook event creation plus HMAC signing and verification helpers across core and the SDK. <code>0.2.0-alpha.10</code> added <code>zkpay intent verify-signature</code> so CLI users can verify a signed hosted checkout URL from scripts. <code>0.2.0-alpha.9</code> lets the CLI create signed hosted checkout links through <code>ZKPAY_SIGNING_SECRET</code> or <code>--signing-secret</code>. These build on the D1 replay store, checkout runtime options, signed payment intents, and optional Sui receipt binding work from earlier alpha releases.</p>
+<p><code>0.2.0-alpha.12</code> adds signed webhook events to successful API verification responses when <code>webhookSecret</code> is configured. <code>0.2.0-alpha.11</code> added webhook event creation plus HMAC signing and verification helpers across core and the SDK. <code>0.2.0-alpha.10</code> added <code>zkpay intent verify-signature</code> so CLI users can verify a signed hosted checkout URL from scripts. <code>0.2.0-alpha.9</code> lets the CLI create signed hosted checkout links through <code>ZKPAY_SIGNING_SECRET</code> or <code>--signing-secret</code>. These build on the D1 replay store, checkout runtime options, signed payment intents, and optional Sui receipt binding work from earlier alpha releases.</p>
 </section><section><h2>Local Release Flow</h2>
 <pre><code class="language-bash">npm install
 npm run check

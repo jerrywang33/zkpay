@@ -11,6 +11,7 @@ import {
   type SuiReceiptVerifierOptions,
   type SuiSettlementVerificationInput,
   type SuiSettlementVerificationResult,
+  type WebhookEvent,
   type ZkpayClientOptions,
 } from "@zkpay/sdk";
 
@@ -252,6 +253,11 @@ export interface ZkpayApiOptions extends ZkpayClientOptions {
   requireIntentSignature?: boolean;
 }
 
+export interface SignedWebhookEvent {
+  event: WebhookEvent;
+  signatureHeader: string;
+}
+
 export function createZkpayApi(options: ZkpayApiOptions = {}): Hono {
   const app = new Hono();
   const client = new ZkpayClient(options);
@@ -321,8 +327,20 @@ export function createZkpayApi(options: ZkpayApiOptions = {}): Hono {
       payload.data.receipt,
       payload.data.options,
     );
+    const webhook = result.ok
+      ? createSignedWebhookEvent(
+          client,
+          options,
+          payload.data.intent,
+          payload.data.receipt,
+          "payments.verify",
+        )
+      : undefined;
 
-    return context.json(result, result.ok ? 200 : 422);
+    return context.json(
+      webhook ? { ...result, webhook } : result,
+      result.ok ? 200 : 422,
+    );
   });
 
   app.post("/payments/verify/sui", async (context) => {
@@ -406,19 +424,70 @@ export function createZkpayApi(options: ZkpayApiOptions = {}): Hono {
         );
       }
 
+      const webhook = createSignedWebhookEvent(
+        client,
+        options,
+        payload.data.intent,
+        result.receipt,
+        "payments.verify.sui",
+      );
+      const responseBody = {
+        ...result,
+        replay,
+        ...(webhook ? { webhook } : {}),
+      };
+
       return context.json(
-        {
-          ...result,
-          replay,
-        },
+        responseBody,
         200,
       );
     }
 
-    return context.json(result, result.ok ? 200 : 422);
+    const webhook =
+      result.ok && result.receipt
+        ? createSignedWebhookEvent(
+            client,
+            options,
+            payload.data.intent,
+            result.receipt,
+            "payments.verify.sui",
+          )
+        : undefined;
+
+    return context.json(
+      webhook ? { ...result, webhook } : result,
+      result.ok ? 200 : 422,
+    );
   });
 
   return app;
+}
+
+function createSignedWebhookEvent(
+  client: ZkpayClient,
+  options: ZkpayApiOptions,
+  intent: PaymentIntent,
+  receipt: PaymentReceipt,
+  source: string,
+): SignedWebhookEvent | undefined {
+  const secret = options.webhookSecret?.trim();
+
+  if (!secret) return undefined;
+
+  const event = client.createWebhookEvent({
+    type: "payment.succeeded",
+    paymentId: intent.id,
+    intent,
+    receipt,
+    data: {
+      source,
+    },
+  });
+
+  return {
+    event,
+    signatureHeader: client.signWebhookEvent(event, secret),
+  };
 }
 
 function createReplayRecord(receipt: PaymentReceipt): SuiReplayRecord {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ZkpayClient } from "@zkpay/sdk";
 import {
   createD1SuiReplayStore,
   createD1SuiReplayStoreSchema,
@@ -122,6 +123,68 @@ describe("@zkpay/api", () => {
     });
   });
 
+  it("adds signed webhook events after successful receipt verification", async () => {
+    const webhookClient = new ZkpayClient({
+      webhookSecret: "webhook_secret",
+    });
+    const app = createZkpayApi({
+      webhookSecret: "webhook_secret",
+    });
+    const createResponse = await app.request("/payments", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        payment: {
+          amount: "20",
+          coin: "USDC",
+          receiver: "0x84f",
+          label: "API credits",
+        },
+      }),
+    });
+    const payment = await createResponse.json();
+    const receipt = {
+      paymentId: payment.intent.id,
+      status: "succeeded",
+      txDigest: "9T9T9T9T9T9T9T9T",
+      amount: payment.intent.amount,
+      coin: payment.intent.coin,
+      receiver: payment.intent.receiver,
+      nonce: payment.intent.nonce,
+      settledAt: "2026-05-25T01:00:00.000Z",
+    };
+
+    const verifyResponse = await app.request("/payments/verify", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        intent: payment.intent,
+        receipt,
+      }),
+    });
+    const json = await verifyResponse.json();
+
+    expect(verifyResponse.status).toBe(200);
+    expect(json.webhook.event).toMatchObject({
+      type: "payment.succeeded",
+      paymentId: payment.intent.id,
+      data: {
+        source: "payments.verify",
+      },
+    });
+    expect(json.webhook.signatureHeader).toMatch(/^t=\d+,v1=/);
+    expect(
+      webhookClient.verifyWebhookSignature(
+        json.webhook.event,
+        json.webhook.signatureHeader,
+      ),
+    ).toBe(true);
+  });
+
   it("can require signed payment intents at the HTTP boundary", async () => {
     const app = createZkpayApi({
       signingSecret: "merchant_secret",
@@ -203,7 +266,11 @@ describe("@zkpay/api", () => {
 
   it("verifies Sui settlement through the HTTP boundary", async () => {
     let capturedBinding: unknown;
+    const webhookClient = new ZkpayClient({
+      webhookSecret: "webhook_secret",
+    });
     const app = createZkpayApi({
+      webhookSecret: "webhook_secret",
       suiVerifier: {
         async verify(input) {
           capturedBinding = input.binding;
@@ -267,7 +334,9 @@ describe("@zkpay/api", () => {
     expect(capturedBinding).toEqual({
       packageId: "0xabc",
     });
-    expect(await verifyResponse.json()).toMatchObject({
+    const json = await verifyResponse.json();
+
+    expect(json).toMatchObject({
       ok: true,
       replay: {
         ok: true,
@@ -276,7 +345,22 @@ describe("@zkpay/api", () => {
         paymentId: payment.intent.id,
         txDigest: "H2jbnwW7j5T9s2YRJrZupaymentdigest",
       },
+      webhook: {
+        event: {
+          type: "payment.succeeded",
+          paymentId: payment.intent.id,
+          data: {
+            source: "payments.verify.sui",
+          },
+        },
+      },
     });
+    expect(
+      webhookClient.verifyWebhookSignature(
+        json.webhook.event,
+        json.webhook.signatureHeader,
+      ),
+    ).toBe(true);
   });
 
   it("rejects a repeated Sui digest after successful verification", async () => {

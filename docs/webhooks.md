@@ -2,7 +2,9 @@
 
 zkpay webhook signing is a merchant-side primitive. It does not deliver
 webhooks by itself yet; it defines the event shape and HMAC signature boundary
-that merchant systems can use once fulfillment automation is attached.
+that merchant systems can use once fulfillment automation is attached. The API
+can also attach a signed webhook event to successful verification responses when
+`webhookSecret` is configured.
 
 ## Event Shape
 
@@ -92,3 +94,35 @@ const signatureHeader = zkpay.signWebhookEvent(event);
 
 Merchant backends should verify webhook signatures before updating fulfillment,
 ledger, or reconciliation state.
+
+## API Verification Responses
+
+```ts
+import { createZkpayApi } from "zkpay-sh/api";
+
+const app = createZkpayApi({
+  webhookSecret: process.env.ZKPAY_WEBHOOK_SECRET,
+});
+```
+
+Successful `/payments/verify` and `/payments/verify/sui` responses include:
+
+```json
+{
+  "ok": true,
+  "webhook": {
+    "event": {
+      "type": "payment.succeeded",
+      "paymentId": "zkp_...",
+      "data": {
+        "source": "payments.verify.sui"
+      }
+    },
+    "signatureHeader": "t=...,v1=..."
+  }
+}
+```
+
+The API still does not push HTTP callbacks to merchant endpoints. It returns the
+signed event so merchant systems can forward, store, or verify it inside their
+own fulfillment pipeline.

@@ -164,6 +164,8 @@ amount, receiver, nonce, or metadata fields before fulfillment.
 
 Webhook events can be HMAC-signed with `ZKPAY_WEBHOOK_SECRET`, giving merchant
 systems a second verification boundary for asynchronous fulfillment events.
+When `createZkpayApi({ webhookSecret })` is configured, successful verification
+responses include a signed webhook event payload for merchant fulfillment.
 
 The CLI reads `ZKPAY_SIGNING_SECRET` for signed hosted checkout links:
 

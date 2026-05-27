@@ -109,7 +109,21 @@
 <p>Response:</p>
 <pre><code class="language-json">{
   &quot;ok&quot;: true,
-  &quot;errors&quot;: []
+  &quot;errors&quot;: [],
+  &quot;webhook&quot;: {
+    &quot;event&quot;: {
+      &quot;id&quot;: &quot;zkw_...&quot;,
+      &quot;type&quot;: &quot;payment.succeeded&quot;,
+      &quot;paymentId&quot;: &quot;zkp_...&quot;,
+      &quot;createdAt&quot;: &quot;2026-05-25T01:01:00.000Z&quot;,
+      &quot;intent&quot;: {},
+      &quot;receipt&quot;: {},
+      &quot;data&quot;: {
+        &quot;source&quot;: &quot;payments.verify&quot;
+      }
+    },
+    &quot;signatureHeader&quot;: &quot;t=...,v1=...&quot;
+  }
 }</code></pre>
 <p>The API does not custody funds and does not mark merchant orders paid by itself. Merchant systems should call verification before fulfillment.</p>
 <p>Hosted checkout can produce the Sui verification payload after the payer submits a wallet transaction. Merchant systems should send that payload to the Sui route below from their backend, not trust the browser result alone.</p>
@@ -145,10 +159,21 @@
     &quot;receiver&quot;: &quot;0x...&quot;,
     &quot;nonce&quot;: &quot;...&quot;,
     &quot;settledAt&quot;: &quot;2026-05-25T01:00:00.000Z&quot;
+  },
+  &quot;webhook&quot;: {
+    &quot;event&quot;: {
+      &quot;type&quot;: &quot;payment.succeeded&quot;,
+      &quot;paymentId&quot;: &quot;zkp_...&quot;,
+      &quot;data&quot;: {
+        &quot;source&quot;: &quot;payments.verify.sui&quot;
+      }
+    },
+    &quot;signatureHeader&quot;: &quot;t=...,v1=...&quot;
   }
 }</code></pre>
 <p>The Sui route verifies transaction effects and balance changes through RPC. It can also require a <code>PaymentBound</code> event when <code>binding.packageId</code> is supplied. Without binding, merchant systems must treat the zkpay nonce as offchain state, store transaction digests, and reject reuse.</p>
 <p>If <code>createZkpayApi({ signingSecret, requireIntentSignature: true })</code> is used, both verification routes reject missing or invalid signatures with <code>401</code>.</p>
+<p>If <code>createZkpayApi({ webhookSecret })</code> is used, successful verification responses include a signed webhook event. Merchant backends can forward the event internally or store it for reconciliation, then verify the <code>signatureHeader</code> with the same secret before fulfillment.</p>
 </section><section><h2>Replay Guard</h2>
 <p><code>createZkpayApi()</code> enables an in-process Sui replay store by default. After a successful <code>/payments/verify/sui</code> response, the store records the payment id and transaction digest. A repeated digest or a second digest for the same payment id returns <code>409</code>.</p>
 <p>Replay response shape:</p>

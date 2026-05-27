@@ -41,7 +41,7 @@
             <a href="decisions/0001-model-first.html">ADR 0001</a>
           </aside>
           <article class="doc-body">
-            <section><p>zkpay webhook signing is a merchant-side primitive. It does not deliver webhooks by itself yet; it defines the event shape and HMAC signature boundary that merchant systems can use once fulfillment automation is attached.</p></section>
+            <section><p>zkpay webhook signing is a merchant-side primitive. It does not deliver webhooks by itself yet; it defines the event shape and HMAC signature boundary that merchant systems can use once fulfillment automation is attached. The API can also attach a signed webhook event to successful verification responses when <code>webhookSecret</code> is configured.</p></section>
 <section><h2>Event Shape</h2>
 <pre><code class="language-json">{
   &quot;id&quot;: &quot;zkw_...&quot;,
@@ -98,7 +98,28 @@ const event = zkpay.createWebhookEvent({
 });
 
 const signatureHeader = zkpay.signWebhookEvent(event);</code></pre>
-<p>Merchant backends should verify webhook signatures before updating fulfillment, ledger, or reconciliation state.</p></section>
+<p>Merchant backends should verify webhook signatures before updating fulfillment, ledger, or reconciliation state.</p>
+</section><section><h2>API Verification Responses</h2>
+<pre><code class="language-ts">import { createZkpayApi } from &quot;zkpay-sh/api&quot;;
+
+const app = createZkpayApi({
+  webhookSecret: process.env.ZKPAY_WEBHOOK_SECRET,
+});</code></pre>
+<p>Successful <code>/payments/verify</code> and <code>/payments/verify/sui</code> responses include:</p>
+<pre><code class="language-json">{
+  &quot;ok&quot;: true,
+  &quot;webhook&quot;: {
+    &quot;event&quot;: {
+      &quot;type&quot;: &quot;payment.succeeded&quot;,
+      &quot;paymentId&quot;: &quot;zkp_...&quot;,
+      &quot;data&quot;: {
+        &quot;source&quot;: &quot;payments.verify.sui&quot;
+      }
+    },
+    &quot;signatureHeader&quot;: &quot;t=...,v1=...&quot;
+  }
+}</code></pre>
+<p>The API still does not push HTTP callbacks to merchant endpoints. It returns the signed event so merchant systems can forward, store, or verify it inside their own fulfillment pipeline.</p></section>
           </article>
         </div>
       </main>

@@ -104,7 +104,21 @@ Response:
 ```json
 {
   "ok": true,
-  "errors": []
+  "errors": [],
+  "webhook": {
+    "event": {
+      "id": "zkw_...",
+      "type": "payment.succeeded",
+      "paymentId": "zkp_...",
+      "createdAt": "2026-05-25T01:01:00.000Z",
+      "intent": {},
+      "receipt": {},
+      "data": {
+        "source": "payments.verify"
+      }
+    },
+    "signatureHeader": "t=...,v1=..."
+  }
 }
 ```
 
@@ -157,6 +171,16 @@ Response:
     "receiver": "0x...",
     "nonce": "...",
     "settledAt": "2026-05-25T01:00:00.000Z"
+  },
+  "webhook": {
+    "event": {
+      "type": "payment.succeeded",
+      "paymentId": "zkp_...",
+      "data": {
+        "source": "payments.verify.sui"
+      }
+    },
+    "signatureHeader": "t=...,v1=..."
   }
 }
 ```
@@ -168,6 +192,11 @@ store transaction digests, and reject reuse.
 
 If `createZkpayApi({ signingSecret, requireIntentSignature: true })` is used,
 both verification routes reject missing or invalid signatures with `401`.
+
+If `createZkpayApi({ webhookSecret })` is used, successful verification
+responses include a signed webhook event. Merchant backends can forward the
+event internally or store it for reconciliation, then verify the
+`signatureHeader` with the same secret before fulfillment.
 
 ## Replay Guard
 

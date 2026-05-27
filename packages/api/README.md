@@ -23,6 +23,11 @@ When `createZkpayApi({ signingSecret, requireIntentSignature: true })` is used,
 `/payments/verify` and `/payments/verify/sui` reject missing or invalid hosted
 checkout signatures before receipt verification runs.
 
+When `createZkpayApi({ webhookSecret })` is used, successful verification
+responses include a signed `payment.succeeded` webhook event and signature
+header. Merchant systems can verify that event before fulfillment or ledger
+updates.
+
 `POST /payments` also accepts `options.checkout` so merchant backends can
 generate hosted checkout URLs with `network`, `coinType`, `decimals`, and
 `bindingPackageId` already attached.

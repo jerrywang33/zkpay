@@ -21,6 +21,7 @@
 - CLI receipt verification for demos and scripts.
 - Optional onchain payment binding through `receipt::bind` and `PaymentBound`.
 - Signed payment intents and signed webhook event primitives.
+- Signed webhook events on successful API verification responses.
 
 ## v0.2 Next Hardening
 
