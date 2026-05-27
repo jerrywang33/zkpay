@@ -24,6 +24,7 @@
 - Signed webhook events on successful API verification responses.
 - Local webhook signing and verification through the CLI.
 - Opt-in HTTP webhook dispatcher with retry policy.
+- In-memory and D1 webhook delivery log stores.
 
 ## v0.2 Next Hardening
 
@@ -41,7 +42,8 @@
 
 - Payment Kit-compatible receipt fields.
 - Duplicate payment prevention.
-- Merchant webhook endpoint registry and delivery observability.
+- Merchant webhook endpoint registry.
+- Delivery log viewer and alerting.
 
 ## v1.0: Merchant Operations
 

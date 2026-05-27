@@ -38,15 +38,17 @@ available. Public installs should use `zkpay-sh/api`.
 The current alpha version is:
 
 ```txt
-0.2.0-alpha.15
+0.2.0-alpha.16
 ```
 
 It is published under the `next` dist-tag. Developer docs should use
 `zkpay-sh@next`; `latest` is not the integration target while the package is in
 alpha.
 
-`0.2.0-alpha.15` adds an opt-in HTTP webhook dispatcher with retry policy for
-successful API verification responses. `0.2.0-alpha.14` lets
+`0.2.0-alpha.16` adds in-memory and D1 webhook delivery log stores plus a
+Cloudflare Worker example schema update. `0.2.0-alpha.15` added an opt-in HTTP
+webhook dispatcher with retry policy for successful API verification responses.
+`0.2.0-alpha.14` lets
 `zkpay webhook verify` consume the JSON output from `zkpay webhook sign --json`
 directly and adds CLI regression coverage. `0.2.0-alpha.13` added
 `zkpay webhook sign` and `zkpay webhook verify` for local webhook testing from

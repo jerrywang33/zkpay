@@ -246,12 +246,94 @@ export function createD1SuiReplayStoreSchema(
   ].join("\n");
 }
 
+export interface WebhookDeliveryStoreOptions {
+  tableName?: string;
+}
+
+export interface WebhookDeliveryRecord {
+  eventId: string;
+  paymentId: string;
+  eventType: string;
+  targetUrl?: string;
+  ok: boolean;
+  status?: number;
+  attemptCount: number;
+  error?: string;
+  completedAt: string;
+}
+
+export interface WebhookDeliveryStore {
+  record(
+    record: WebhookDeliveryRecord,
+  ): Promise<void> | void;
+}
+
+export class InMemoryWebhookDeliveryStore implements WebhookDeliveryStore {
+  readonly records: WebhookDeliveryRecord[] = [];
+
+  record(record: WebhookDeliveryRecord): void {
+    this.records.push(record);
+  }
+}
+
+export function createD1WebhookDeliveryStore(
+  database: D1DatabaseLike,
+  options: WebhookDeliveryStoreOptions = {},
+): WebhookDeliveryStore {
+  const tableName = sqlIdentifier(options.tableName ?? "zkpay_webhook_delivery");
+
+  return {
+    async record(record) {
+      await database
+        .prepare(
+          `insert into ${tableName} (event_id, payment_id, event_type, target_url, ok, status, attempt_count, error, completed_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        )
+        .bind(
+          record.eventId,
+          record.paymentId,
+          record.eventType,
+          record.targetUrl ?? null,
+          record.ok ? 1 : 0,
+          record.status ?? null,
+          record.attemptCount,
+          record.error ?? null,
+          record.completedAt,
+        )
+        .run();
+    },
+  };
+}
+
+export function createD1WebhookDeliveryStoreSchema(
+  options: WebhookDeliveryStoreOptions = {},
+): string {
+  const tableName = sqlIdentifier(options.tableName ?? "zkpay_webhook_delivery");
+
+  return [
+    `create table if not exists ${tableName} (`,
+    "  id integer primary key autoincrement,",
+    "  event_id text not null,",
+    "  payment_id text not null,",
+    "  event_type text not null,",
+    "  target_url text,",
+    "  ok integer not null,",
+    "  status integer,",
+    "  attempt_count integer not null,",
+    "  error text,",
+    "  completed_at text not null",
+    ");",
+    `create index if not exists ${tableName}_payment_id_idx on ${tableName} (payment_id);`,
+    `create index if not exists ${tableName}_event_id_idx on ${tableName} (event_id);`,
+  ].join("\n");
+}
+
 export interface ZkpayApiOptions extends ZkpayClientOptions {
   sui?: SuiReceiptVerifierOptions;
   suiVerifier?: SuiVerifier;
   replayStore?: SuiReplayStore | false;
   requireIntentSignature?: boolean;
   webhookDispatcher?: WebhookDispatcher;
+  webhookDeliveryStore?: WebhookDeliveryStore | false;
 }
 
 export interface SignedWebhookEvent {
@@ -264,6 +346,13 @@ export interface WebhookDeliveryResult {
   url?: string;
   status?: number;
   attemptCount: number;
+  error?: string;
+  completedAt: string;
+}
+
+export interface WebhookDeliveryLogResult {
+  ok: boolean;
+  recordCount: number;
   error?: string;
   completedAt: string;
 }
@@ -595,6 +684,7 @@ async function createWebhookResponse(
   | {
       webhook: SignedWebhookEvent;
       webhookDelivery?: WebhookDeliveryResult[];
+      webhookDeliveryLog?: WebhookDeliveryLogResult;
     }
   | Record<string, never>
 > {
@@ -608,28 +698,34 @@ async function createWebhookResponse(
 
   if (!webhook) return {};
 
-  if (!options.webhookDispatcher) {
-    return { webhook };
-  }
+  if (!options.webhookDispatcher) return { webhook };
+
+  let webhookDelivery: WebhookDeliveryResult[];
 
   try {
-    return {
-      webhook,
-      webhookDelivery: await options.webhookDispatcher.dispatch(webhook),
-    };
+    webhookDelivery = await options.webhookDispatcher.dispatch(webhook);
   } catch (error) {
-    return {
-      webhook,
-      webhookDelivery: [
-        {
-          ok: false,
-          attemptCount: 0,
-          error: error instanceof Error ? error.message : String(error),
-          completedAt: new Date().toISOString(),
-        },
-      ],
-    };
+    webhookDelivery = [
+      {
+        ok: false,
+        attemptCount: 0,
+        error: error instanceof Error ? error.message : String(error),
+        completedAt: new Date().toISOString(),
+      },
+    ];
   }
+
+  const webhookDeliveryLog = await recordWebhookDeliveries(
+    options,
+    webhook,
+    webhookDelivery,
+  );
+
+  return {
+    webhook,
+    webhookDelivery,
+    ...(webhookDeliveryLog ? { webhookDeliveryLog } : {}),
+  };
 }
 
 function createSignedWebhookEvent(
@@ -656,6 +752,52 @@ function createSignedWebhookEvent(
   return {
     event,
     signatureHeader: client.signWebhookEvent(event, secret),
+  };
+}
+
+async function recordWebhookDeliveries(
+  options: ZkpayApiOptions,
+  webhook: SignedWebhookEvent,
+  results: readonly WebhookDeliveryResult[],
+): Promise<WebhookDeliveryLogResult | undefined> {
+  if (!options.webhookDeliveryStore || results.length === 0) return undefined;
+
+  try {
+    for (const result of results) {
+      await options.webhookDeliveryStore.record(
+        createWebhookDeliveryRecord(webhook, result),
+      );
+    }
+
+    return {
+      ok: true,
+      recordCount: results.length,
+      completedAt: new Date().toISOString(),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      recordCount: 0,
+      error: error instanceof Error ? error.message : String(error),
+      completedAt: new Date().toISOString(),
+    };
+  }
+}
+
+function createWebhookDeliveryRecord(
+  webhook: SignedWebhookEvent,
+  result: WebhookDeliveryResult,
+): WebhookDeliveryRecord {
+  return {
+    eventId: webhook.event.id,
+    paymentId: webhook.event.paymentId,
+    eventType: webhook.event.type,
+    targetUrl: result.url,
+    ok: result.ok,
+    status: result.status,
+    attemptCount: result.attemptCount,
+    error: result.error,
+    completedAt: result.completedAt,
   };
 }
 

@@ -1,14 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { ZkpayClient } from "@zkpay/sdk";
 import {
-  createHttpWebhookDispatcher,
+  InMemoryWebhookDeliveryStore,
   createD1SuiReplayStore,
   createD1SuiReplayStoreSchema,
+  createD1WebhookDeliveryStore,
+  createD1WebhookDeliveryStoreSchema,
+  createHttpWebhookDispatcher,
   createZkpayApi,
   type D1DatabaseLike,
   type D1PreparedStatementLike,
   type SuiReplayRecord,
   type SuiVerifier,
+  type WebhookDeliveryRecord,
   type WebhookDispatcher,
 } from "./index.js";
 
@@ -190,6 +194,7 @@ describe("@zkpay/api", () => {
   it("dispatches signed webhook events when configured", async () => {
     let capturedSignature: string | undefined;
     let capturedPaymentId: string | undefined;
+    const deliveryStore = new InMemoryWebhookDeliveryStore();
     const dispatcher: WebhookDispatcher = {
       async dispatch(webhook) {
         capturedSignature = webhook.signatureHeader;
@@ -209,6 +214,7 @@ describe("@zkpay/api", () => {
     const app = createZkpayApi({
       webhookSecret: "webhook_secret",
       webhookDispatcher: dispatcher,
+      webhookDeliveryStore: deliveryStore,
     });
     const createResponse = await app.request("/payments", {
       method: "POST",
@@ -256,6 +262,100 @@ describe("@zkpay/api", () => {
         url: "https://merchant.example/webhooks/zkpay",
         status: 202,
         attemptCount: 1,
+        completedAt: "2026-05-25T01:02:00.000Z",
+      },
+    ]);
+    expect(json.webhookDeliveryLog).toMatchObject({
+      ok: true,
+      recordCount: 1,
+    });
+    expect(deliveryStore.records).toEqual([
+      {
+        eventId: json.webhook.event.id,
+        paymentId: payment.intent.id,
+        eventType: "payment.succeeded",
+        targetUrl: "https://merchant.example/webhooks/zkpay",
+        ok: true,
+        status: 202,
+        attemptCount: 1,
+        completedAt: "2026-05-25T01:02:00.000Z",
+      },
+    ]);
+  });
+
+  it("records webhook delivery results with a D1 adapter", async () => {
+    const database = new FakeD1Database();
+    const dispatcher: WebhookDispatcher = {
+      async dispatch() {
+        return [
+          {
+            ok: false,
+            url: "https://merchant.example/webhooks/zkpay",
+            status: 500,
+            attemptCount: 3,
+            error: "HTTP 500",
+            completedAt: "2026-05-25T01:02:00.000Z",
+          },
+        ];
+      },
+    };
+    const app = createZkpayApi({
+      webhookSecret: "webhook_secret",
+      webhookDispatcher: dispatcher,
+      webhookDeliveryStore: createD1WebhookDeliveryStore(database),
+    });
+    const createResponse = await app.request("/payments", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        payment: {
+          amount: "20",
+          coin: "USDC",
+          receiver: "0x84f",
+          label: "API credits",
+        },
+      }),
+    });
+    const payment = await createResponse.json();
+
+    const verifyResponse = await app.request("/payments/verify", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        intent: payment.intent,
+        receipt: {
+          paymentId: payment.intent.id,
+          status: "succeeded",
+          txDigest: "9T9T9T9T9T9T9T9T",
+          amount: payment.intent.amount,
+          coin: payment.intent.coin,
+          receiver: payment.intent.receiver,
+          nonce: payment.intent.nonce,
+          settledAt: "2026-05-25T01:00:00.000Z",
+        },
+      }),
+    });
+    const json = await verifyResponse.json();
+
+    expect(verifyResponse.status).toBe(200);
+    expect(json.webhookDeliveryLog).toMatchObject({
+      ok: true,
+      recordCount: 1,
+    });
+    expect(database.webhookDeliveryRecords).toEqual([
+      {
+        eventId: json.webhook.event.id,
+        paymentId: payment.intent.id,
+        eventType: "payment.succeeded",
+        targetUrl: "https://merchant.example/webhooks/zkpay",
+        ok: false,
+        status: 500,
+        attemptCount: 3,
+        error: "HTTP 500",
         completedAt: "2026-05-25T01:02:00.000Z",
       },
     ]);
@@ -744,6 +844,20 @@ describe("@zkpay/api", () => {
       createD1SuiReplayStoreSchema({ tableName: "bad-name" }),
     ).toThrow("Invalid SQL identifier");
   });
+
+  it("generates D1 webhook delivery store schema", () => {
+    expect(createD1WebhookDeliveryStoreSchema()).toContain(
+      "create table if not exists zkpay_webhook_delivery",
+    );
+    expect(createD1WebhookDeliveryStoreSchema({ tableName: "merchant_webhooks" }))
+      .toContain("create table if not exists merchant_webhooks");
+    expect(createD1WebhookDeliveryStoreSchema()).toContain(
+      "event_id text not null",
+    );
+    expect(() =>
+      createD1WebhookDeliveryStoreSchema({ tableName: "bad-name" }),
+    ).toThrow("Invalid SQL identifier");
+  });
 });
 
 function makeSuccessfulSuiVerifier(): SuiVerifier {
@@ -774,6 +888,7 @@ function makeSuccessfulSuiVerifier(): SuiVerifier {
 
 class FakeD1Database implements D1DatabaseLike {
   readonly records: SuiReplayRecord[] = [];
+  readonly webhookDeliveryRecords: WebhookDeliveryRecord[] = [];
 
   prepare(query: string): D1PreparedStatementLike {
     return new FakeD1PreparedStatement(this, query);
@@ -812,6 +927,33 @@ class FakeD1PreparedStatement implements D1PreparedStatementLike {
   }
 
   async run(): Promise<unknown> {
+    if (this.values.length === 9) {
+      this.database.webhookDeliveryRecords.push({
+        eventId: String(this.values[0]),
+        paymentId: String(this.values[1]),
+        eventType: String(this.values[2]),
+        targetUrl:
+          this.values[3] === null || this.values[3] === undefined
+            ? undefined
+            : String(this.values[3]),
+        ok: this.values[4] === 1,
+        status:
+          this.values[5] === null || this.values[5] === undefined
+            ? undefined
+            : Number(this.values[5]),
+        attemptCount: Number(this.values[6]),
+        error:
+          this.values[7] === null || this.values[7] === undefined
+            ? undefined
+            : String(this.values[7]),
+        completedAt: String(this.values[8]),
+      });
+
+      return {
+        success: true,
+      };
+    }
+
     const record: SuiReplayRecord = {
       paymentId: String(this.values[0]),
       txDigest: String(this.values[1]),

@@ -130,7 +130,11 @@ own fulfillment pipeline.
 To enable opt-in delivery from the API, attach a dispatcher:
 
 ```ts
-import { createHttpWebhookDispatcher, createZkpayApi } from "zkpay-sh/api";
+import {
+  createD1WebhookDeliveryStore,
+  createHttpWebhookDispatcher,
+  createZkpayApi,
+} from "zkpay-sh/api";
 
 const app = createZkpayApi({
   webhookSecret: process.env.ZKPAY_WEBHOOK_SECRET,
@@ -141,13 +145,15 @@ const app = createZkpayApi({
       },
     ],
   }),
+  webhookDeliveryStore: createD1WebhookDeliveryStore(env.DB),
 });
 ```
 
 The dispatcher posts the canonical event JSON and sets
 `zkpay-signature: t=...,v1=...`. Verification responses include
 `webhookDelivery` results so merchant systems can observe whether delivery was
-accepted.
+accepted. With a delivery store, each result is recorded by event id, payment id,
+target URL, status, attempt count, error, and completion time.
 
 ## CLI
 

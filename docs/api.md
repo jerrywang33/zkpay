@@ -203,7 +203,11 @@ the signed event body with a `zkpay-signature` header and records delivery
 results in the verification response:
 
 ```ts
-import { createHttpWebhookDispatcher, createZkpayApi } from "zkpay-sh/api";
+import {
+  createD1WebhookDeliveryStore,
+  createHttpWebhookDispatcher,
+  createZkpayApi,
+} from "zkpay-sh/api";
 
 const app = createZkpayApi({
   webhookSecret: process.env.ZKPAY_WEBHOOK_SECRET,
@@ -218,6 +222,7 @@ const app = createZkpayApi({
       delayMs: 250,
     },
   }),
+  webhookDeliveryStore: createD1WebhookDeliveryStore(env.DB),
 });
 ```
 
@@ -233,9 +238,18 @@ Delivery result:
       "attemptCount": 1,
       "completedAt": "2026-05-25T01:02:00.000Z"
     }
-  ]
+  ],
+  "webhookDeliveryLog": {
+    "ok": true,
+    "recordCount": 1,
+    "completedAt": "2026-05-25T01:02:00.000Z"
+  }
 }
 ```
+
+The delivery log store is best-effort. If it fails, verification responses still
+return the signed webhook event and delivery results with `webhookDeliveryLog`
+set to a failed log status.
 
 ## Replay Guard
 
@@ -263,19 +277,24 @@ The default store only protects a single running API process. Production
 merchant backends should pass a durable `replayStore` implementation backed by
 their own database or cache.
 
-Cloudflare D1 is supported through the public API subpath:
+Cloudflare D1 is supported through the public API subpath for both replay
+protection and webhook delivery logs:
 
 ```ts
 import {
   createD1SuiReplayStore,
+  createD1WebhookDeliveryStore,
+  createD1WebhookDeliveryStoreSchema,
   createD1SuiReplayStoreSchema,
   createZkpayApi,
 } from "zkpay-sh/api";
 
 console.log(createD1SuiReplayStoreSchema());
+console.log(createD1WebhookDeliveryStoreSchema());
 
 const app = createZkpayApi({
   replayStore: createD1SuiReplayStore(env.DB),
+  webhookDeliveryStore: createD1WebhookDeliveryStore(env.DB),
 });
 ```
 

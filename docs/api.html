@@ -175,7 +175,11 @@
 <p>If <code>createZkpayApi({ signingSecret, requireIntentSignature: true })</code> is used, both verification routes reject missing or invalid signatures with <code>401</code>.</p>
 <p>If <code>createZkpayApi({ webhookSecret })</code> is used, successful verification responses include a signed webhook event. Merchant backends can forward the event internally or store it for reconciliation, then verify the <code>signatureHeader</code> with the same secret before fulfillment.</p>
 <p>Webhook delivery is opt-in through <code>webhookDispatcher</code>. The helper below posts the signed event body with a <code>zkpay-signature</code> header and records delivery results in the verification response:</p>
-<pre><code class="language-ts">import { createHttpWebhookDispatcher, createZkpayApi } from &quot;zkpay-sh/api&quot;;
+<pre><code class="language-ts">import {
+  createD1WebhookDeliveryStore,
+  createHttpWebhookDispatcher,
+  createZkpayApi,
+} from &quot;zkpay-sh/api&quot;;
 
 const app = createZkpayApi({
   webhookSecret: process.env.ZKPAY_WEBHOOK_SECRET,
@@ -190,6 +194,7 @@ const app = createZkpayApi({
       delayMs: 250,
     },
   }),
+  webhookDeliveryStore: createD1WebhookDeliveryStore(env.DB),
 });</code></pre>
 <p>Delivery result:</p>
 <pre><code class="language-json">{
@@ -201,8 +206,14 @@ const app = createZkpayApi({
       &quot;attemptCount&quot;: 1,
       &quot;completedAt&quot;: &quot;2026-05-25T01:02:00.000Z&quot;
     }
-  ]
+  ],
+  &quot;webhookDeliveryLog&quot;: {
+    &quot;ok&quot;: true,
+    &quot;recordCount&quot;: 1,
+    &quot;completedAt&quot;: &quot;2026-05-25T01:02:00.000Z&quot;
+  }
 }</code></pre>
+<p>The delivery log store is best-effort. If it fails, verification responses still return the signed webhook event and delivery results with <code>webhookDeliveryLog</code> set to a failed log status.</p>
 </section><section><h2>Replay Guard</h2>
 <p><code>createZkpayApi()</code> enables an in-process Sui replay store by default. After a successful <code>/payments/verify/sui</code> response, the store records the payment id and transaction digest. A repeated digest or a second digest for the same payment id returns <code>409</code>.</p>
 <p>Replay response shape:</p>
@@ -217,17 +228,21 @@ const app = createZkpayApi({
   }
 }</code></pre>
 <p>The default store only protects a single running API process. Production merchant backends should pass a durable <code>replayStore</code> implementation backed by their own database or cache.</p>
-<p>Cloudflare D1 is supported through the public API subpath:</p>
+<p>Cloudflare D1 is supported through the public API subpath for both replay protection and webhook delivery logs:</p>
 <pre><code class="language-ts">import {
   createD1SuiReplayStore,
+  createD1WebhookDeliveryStore,
+  createD1WebhookDeliveryStoreSchema,
   createD1SuiReplayStoreSchema,
   createZkpayApi,
 } from &quot;zkpay-sh/api&quot;;
 
 console.log(createD1SuiReplayStoreSchema());
+console.log(createD1WebhookDeliveryStoreSchema());
 
 const app = createZkpayApi({
   replayStore: createD1SuiReplayStore(env.DB),
+  webhookDeliveryStore: createD1WebhookDeliveryStore(env.DB),
 });</code></pre>
 <p>See <code>examples/cloudflare-worker/</code> for a minimal Worker entrypoint and D1 schema.</p></section>
           </article>

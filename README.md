@@ -168,6 +168,8 @@ When `createZkpayApi({ webhookSecret })` is configured, successful verification
 responses include a signed webhook event payload for merchant fulfillment.
 When a `webhookDispatcher` is also configured, the API can attempt delivery to
 merchant webhook endpoints and include delivery results in the response.
+`createD1WebhookDeliveryStore` records those delivery attempts for Cloudflare D1
+deployments.
 
 The CLI reads `ZKPAY_SIGNING_SECRET` for signed hosted checkout links:
 

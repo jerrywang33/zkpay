@@ -8,3 +8,22 @@ create table if not exists zkpay_sui_replay (
   settled_at text not null,
   verified_at text not null
 );
+
+create table if not exists zkpay_webhook_delivery (
+  id integer primary key autoincrement,
+  event_id text not null,
+  payment_id text not null,
+  event_type text not null,
+  target_url text,
+  ok integer not null,
+  status integer,
+  attempt_count integer not null,
+  error text,
+  completed_at text not null
+);
+
+create index if not exists zkpay_webhook_delivery_payment_id_idx
+  on zkpay_webhook_delivery (payment_id);
+
+create index if not exists zkpay_webhook_delivery_event_id_idx
+  on zkpay_webhook_delivery (event_id);

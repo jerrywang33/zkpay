@@ -557,6 +557,7 @@ the current static marketing page.
 - signed payment intents and signed webhook event primitives;
 - local webhook signing and verification for scripts;
 - opt-in HTTP webhook dispatcher for merchant callbacks;
+- in-memory and D1 webhook delivery log stores;
 - merchant-side digest replay storage still required.
 
 ### v0.3: zkLogin Checkout
@@ -578,7 +579,7 @@ the current static marketing page.
 ### v0.5: Merchant Webhooks
 
 - webhook endpoint registration;
-- retries and delivery logs;
+- delivery log viewer and alerting;
 - production delivery observability.
 
 ### v1.0: Payment Intents

@@ -31,7 +31,11 @@ updates.
 Webhook delivery is opt-in through a dispatcher:
 
 ```ts
-import { createHttpWebhookDispatcher, createZkpayApi } from "zkpay-sh/api";
+import {
+  createD1WebhookDeliveryStore,
+  createHttpWebhookDispatcher,
+  createZkpayApi,
+} from "zkpay-sh/api";
 
 const app = createZkpayApi({
   webhookSecret: process.env.ZKPAY_WEBHOOK_SECRET,
@@ -42,20 +46,30 @@ const app = createZkpayApi({
       },
     ],
   }),
+  webhookDeliveryStore: createD1WebhookDeliveryStore(env.DB),
 });
 ```
+
+Delivery logs are best-effort. If the log store fails, payment verification and
+webhook response generation still complete.
 
 `POST /payments` also accepts `options.checkout` so merchant backends can
 generate hosted checkout URLs with `network`, `coinType`, `decimals`, and
 `bindingPackageId` already attached.
 
-Cloudflare D1 replay storage is available without another dependency:
+Cloudflare D1 replay and webhook delivery storage are available without another
+dependency:
 
 ```ts
-import { createD1SuiReplayStore, createZkpayApi } from "zkpay-sh/api";
+import {
+  createD1SuiReplayStore,
+  createD1WebhookDeliveryStore,
+  createZkpayApi,
+} from "zkpay-sh/api";
 
 const app = createZkpayApi({
   replayStore: createD1SuiReplayStore(env.DB),
+  webhookDeliveryStore: createD1WebhookDeliveryStore(env.DB),
 });
 ```
 
