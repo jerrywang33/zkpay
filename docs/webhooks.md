@@ -126,3 +126,31 @@ Successful `/payments/verify` and `/payments/verify/sui` responses include:
 The API still does not push HTTP callbacks to merchant endpoints. It returns the
 signed event so merchant systems can forward, store, or verify it inside their
 own fulfillment pipeline.
+
+## CLI
+
+```bash
+ZKPAY_WEBHOOK_SECRET=webhook_secret zkpay webhook sign \
+  --intent '<json-or-checkout-url>' \
+  --receipt '<json>' \
+  --source payments.verify.sui \
+  --json
+```
+
+The command returns:
+
+```json
+{
+  "event": {},
+  "signatureHeader": "t=...,v1=..."
+}
+```
+
+Verify an event locally:
+
+```bash
+ZKPAY_WEBHOOK_SECRET=webhook_secret zkpay webhook verify \
+  --event '<json>' \
+  --signature-header 't=...,v1=...' \
+  --json
+```

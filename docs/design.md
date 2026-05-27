@@ -554,6 +554,8 @@ the current static marketing page.
 - Sui RPC receipt verification by digest, receiver, coin type, and amount;
 - `/payments/verify/sui` API route;
 - CLI receipt verification for demos and scripts;
+- signed payment intents and signed webhook event primitives;
+- local webhook signing and verification for scripts;
 - merchant-side digest replay storage still required.
 
 ### v0.3: zkLogin Checkout
@@ -575,9 +577,8 @@ the current static marketing page.
 ### v0.5: Merchant Webhooks
 
 - webhook endpoint registration;
-- signed `payment.succeeded` event;
 - retries and delivery logs;
-- local webhook testing CLI.
+- production delivery observability.
 
 ### v1.0: Payment Intents
 

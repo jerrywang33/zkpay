@@ -22,6 +22,7 @@
 - Optional onchain payment binding through `receipt::bind` and `PaymentBound`.
 - Signed payment intents and signed webhook event primitives.
 - Signed webhook events on successful API verification responses.
+- Local webhook signing and verification through the CLI.
 
 ## v0.2 Next Hardening
 

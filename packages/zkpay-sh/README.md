@@ -90,5 +90,7 @@ npm install -g zkpay-sh@next
 zkpay link create --amount 20 --coin USDC --receiver 0x84f --json
 ZKPAY_SIGNING_SECRET=merchant_secret zkpay link create --amount 20 --coin USDC --receiver 0x84f --json
 ZKPAY_SIGNING_SECRET=merchant_secret zkpay intent verify-signature --intent 'https://zkpay.sh/pay/zkp_...?intent=...&signature=...' --json
+ZKPAY_WEBHOOK_SECRET=webhook_secret zkpay webhook sign --intent '<json-or-checkout-url>' --receipt '<json>' --json
+ZKPAY_WEBHOOK_SECRET=webhook_secret zkpay webhook verify --event '<json>' --signature-header 't=...,v1=...' --json
 zkpay receipt verify-sui --intent '<json-or-checkout-url>' --tx-digest H2j... --coin-type 0x...::usdc::USDC --decimals 6 --binding-package-id 0x... --json
 ```

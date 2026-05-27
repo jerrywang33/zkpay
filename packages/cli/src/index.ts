@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { ZkpayClient } from "@zkpay/sdk";
+import { ZkpayClient, type WebhookEvent } from "@zkpay/sdk";
 
 const [, , command, subcommand, ...args] = process.argv;
 
@@ -117,6 +117,96 @@ try {
     process.exit(ok ? 0 : 1);
   }
 
+  if (command === "webhook" && subcommand === "sign") {
+    const values = parseFlags(args);
+    if (values.help === "true") {
+      printUsage();
+      process.exit(0);
+    }
+    const client = new ZkpayClient({
+      webhookSecret: required(
+        readWebhookSecret(values),
+        "webhook-secret or ZKPAY_WEBHOOK_SECRET",
+      ),
+    });
+    const event = values.event
+      ? parseWebhookEvent(values.event)
+      : client.createWebhookEvent(
+          {
+            type:
+              (values.type as "payment.succeeded" | "payment.failed" | "payment.updated") ??
+              "payment.succeeded",
+            paymentId: values["payment-id"] ?? parseIntent(values.intent).id,
+            intent: parseIntent(values.intent),
+            receipt: parseJson(required(values.receipt, "receipt"), "receipt"),
+            data: buildWebhookData(values),
+          },
+          {
+            id: values["event-id"],
+            now: values.now,
+          },
+        );
+    const signatureHeader = client.signWebhookEvent(
+      event,
+      undefined,
+      values.timestamp ? { timestamp: Number(values.timestamp) } : {},
+    );
+
+    if (values.json === "true") {
+      console.log(
+        JSON.stringify(
+          {
+            event,
+            signatureHeader,
+          },
+          null,
+          2,
+        ),
+      );
+    } else {
+      console.log(signatureHeader);
+    }
+
+    process.exit(0);
+  }
+
+  if (command === "webhook" && subcommand === "verify") {
+    const values = parseFlags(args);
+    if (values.help === "true") {
+      printUsage();
+      process.exit(0);
+    }
+    const client = new ZkpayClient({
+      webhookSecret: required(
+        readWebhookSecret(values),
+        "webhook-secret or ZKPAY_WEBHOOK_SECRET",
+      ),
+    });
+    const event = parseWebhookEvent(required(values.event, "event"));
+    const ok = client.verifyWebhookSignature(
+      event,
+      required(
+        values["signature-header"] ?? values.signature,
+        "signature-header",
+      ),
+      undefined,
+      {
+        now: values.now ? Number(values.now) || values.now : undefined,
+        toleranceSeconds: values["tolerance-seconds"]
+          ? Number(values["tolerance-seconds"])
+          : undefined,
+      },
+    );
+
+    if (values.json === "true") {
+      console.log(JSON.stringify({ ok }, null, 2));
+    } else {
+      console.log(ok ? "verified" : "invalid");
+    }
+
+    process.exit(ok ? 0 : 1);
+  }
+
   printUsage();
   process.exit(1);
 } catch (error) {
@@ -156,6 +246,16 @@ function parseIntent(value: string | undefined) {
   return parseIntentRequest(value).intent;
 }
 
+function parseWebhookEvent(value: string): WebhookEvent {
+  const parsed = parseJson(value, "event");
+
+  if (parsed && typeof parsed === "object" && "event" in parsed) {
+    return parsed.event;
+  }
+
+  return parsed;
+}
+
 function parseIntentRequest(value: string | undefined) {
   const raw = required(value, "intent");
   const client = new ZkpayClient();
@@ -177,6 +277,30 @@ function parseIntentRequest(value: string | undefined) {
     intent: parsed,
     signature: undefined,
   };
+}
+
+function parseJson(value: string, name: string): any {
+  try {
+    return JSON.parse(value);
+  } catch {
+    throw new Error(`Invalid JSON for --${name}`);
+  }
+}
+
+function buildWebhookData(
+  values: Record<string, string>,
+): Record<string, unknown> | undefined {
+  const data = values.data
+    ? parseJson(values.data, "data")
+    : values.source
+      ? { source: values.source }
+      : undefined;
+
+  if (data === null || (data && (typeof data !== "object" || Array.isArray(data)))) {
+    throw new Error("--data must be a JSON object");
+  }
+
+  return data;
 }
 
 function buildCheckoutOptions(values: Record<string, string>) {
@@ -206,6 +330,8 @@ function printUsage(): void {
       "Usage:",
       "  zkpay link create --amount 20 --coin USDC --receiver 0x...",
       "  zkpay intent verify-signature --intent '<json-or-checkout-url>'",
+      "  zkpay webhook sign --intent '<json-or-checkout-url>' --receipt '<json>'",
+      "  zkpay webhook verify --event '<json>' --signature-header 't=...,v1=...'",
       "  zkpay receipt verify-sui --intent '<json-or-checkout-url>' --tx-digest <digest> --coin-type <type> --decimals 6",
       "",
       "Options:",
@@ -216,7 +342,16 @@ function printUsage(): void {
       "  --ptb                Mark checkout as programmable transaction",
       "  --sponsor false      Disable sponsor fallback",
       "  --signing-secret <s> Sign hosted checkout URL; prefer ZKPAY_SIGNING_SECRET",
+      "  --webhook-secret <s> Sign or verify webhook events; prefer ZKPAY_WEBHOOK_SECRET",
       "  --signature <s>      Payment intent signature for intent verification",
+      "  --signature-header <h> Webhook signature header for webhook verification",
+      "  --event <json>       Webhook event JSON or webhook sign JSON output",
+      "  --event-id <id>      Optional webhook event id",
+      "  --receipt <json>     Payment receipt JSON for webhook signing",
+      "  --source <name>      Webhook data source marker",
+      "  --data <json>        Webhook data JSON object",
+      "  --timestamp <sec>    Webhook signature timestamp",
+      "  --tolerance-seconds <n> Webhook verification replay tolerance",
       "  --network <name>      Sui network for checkout or receipt verification",
       "  --coin-type <type>    Sui coin type for checkout or receipt verification",
       "  --decimals <n>        Sui coin decimals for checkout or receipt verification",
@@ -234,4 +369,8 @@ function printUsage(): void {
 
 function readSigningSecret(values: Record<string, string>): string | undefined {
   return values["signing-secret"] ?? process.env.ZKPAY_SIGNING_SECRET;
+}
+
+function readWebhookSecret(values: Record<string, string>): string | undefined {
+  return values["webhook-secret"] ?? process.env.ZKPAY_WEBHOOK_SECRET;
 }

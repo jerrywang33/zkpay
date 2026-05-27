@@ -119,7 +119,23 @@ const app = createZkpayApi({
     &quot;signatureHeader&quot;: &quot;t=...,v1=...&quot;
   }
 }</code></pre>
-<p>The API still does not push HTTP callbacks to merchant endpoints. It returns the signed event so merchant systems can forward, store, or verify it inside their own fulfillment pipeline.</p></section>
+<p>The API still does not push HTTP callbacks to merchant endpoints. It returns the signed event so merchant systems can forward, store, or verify it inside their own fulfillment pipeline.</p>
+</section><section><h2>CLI</h2>
+<pre><code class="language-bash">ZKPAY_WEBHOOK_SECRET=webhook_secret zkpay webhook sign \
+  --intent &#039;&lt;json-or-checkout-url&gt;&#039; \
+  --receipt &#039;&lt;json&gt;&#039; \
+  --source payments.verify.sui \
+  --json</code></pre>
+<p>The command returns:</p>
+<pre><code class="language-json">{
+  &quot;event&quot;: {},
+  &quot;signatureHeader&quot;: &quot;t=...,v1=...&quot;
+}</code></pre>
+<p>Verify an event locally:</p>
+<pre><code class="language-bash">ZKPAY_WEBHOOK_SECRET=webhook_secret zkpay webhook verify \
+  --event &#039;&lt;json&gt;&#039; \
+  --signature-header &#039;t=...,v1=...&#039; \
+  --json</code></pre></section>
           </article>
         </div>
       </main>

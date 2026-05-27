@@ -173,6 +173,13 @@ The CLI reads `ZKPAY_SIGNING_SECRET` for signed hosted checkout links:
 ZKPAY_SIGNING_SECRET=merchant_secret zkpay link create --amount 20 --coin USDC --receiver 0x84f --json
 ```
 
+It also reads `ZKPAY_WEBHOOK_SECRET` for local webhook signing and verification:
+
+```bash
+zkpay webhook sign --intent '<json-or-checkout-url>' --receipt '<json>' --json
+zkpay webhook verify --event '<json>' --signature-header 't=...,v1=...' --json
+```
+
 The API includes a pluggable Sui replay store. By default it keeps an in-process
 record of verified payment ids and transaction digests, so demos reject repeated
 settlement attempts. Production merchant backends should inject a durable store

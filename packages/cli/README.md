@@ -38,6 +38,21 @@ ZKPAY_SIGNING_SECRET=merchant_secret zkpay intent verify-signature \
   --json
 ```
 
+Sign and verify webhook events:
+
+```bash
+ZKPAY_WEBHOOK_SECRET=webhook_secret zkpay webhook sign \
+  --intent '<json-or-checkout-url>' \
+  --receipt '<json>' \
+  --source payments.verify.sui \
+  --json
+
+ZKPAY_WEBHOOK_SECRET=webhook_secret zkpay webhook verify \
+  --event '<json>' \
+  --signature-header 't=...,v1=...' \
+  --json
+```
+
 Verify a Sui testnet receipt:
 
 ```bash

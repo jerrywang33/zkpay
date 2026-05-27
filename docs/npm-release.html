@@ -58,9 +58,9 @@ zkpay-sh       CLI binary alias</code></pre>
 <p><code>@zkpay/api</code> remains an internal workspace package until <code>@zkpay</code> scope access is available. Public installs should use <code>zkpay-sh/api</code>.</p>
 </section><section><h2>Versioning</h2>
 <p>The current alpha version is:</p>
-<pre><code class="language-txt">0.2.0-alpha.12</code></pre>
+<pre><code class="language-txt">0.2.0-alpha.13</code></pre>
 <p>It is published under the <code>next</code> dist-tag. Developer docs should use <code>zkpay-sh@next</code>; <code>latest</code> is not the integration target while the package is in alpha.</p>
-<p><code>0.2.0-alpha.12</code> adds signed webhook events to successful API verification responses when <code>webhookSecret</code> is configured. <code>0.2.0-alpha.11</code> added webhook event creation plus HMAC signing and verification helpers across core and the SDK. <code>0.2.0-alpha.10</code> added <code>zkpay intent verify-signature</code> so CLI users can verify a signed hosted checkout URL from scripts. <code>0.2.0-alpha.9</code> lets the CLI create signed hosted checkout links through <code>ZKPAY_SIGNING_SECRET</code> or <code>--signing-secret</code>. These build on the D1 replay store, checkout runtime options, signed payment intents, and optional Sui receipt binding work from earlier alpha releases.</p>
+<p><code>0.2.0-alpha.13</code> adds <code>zkpay webhook sign</code> and <code>zkpay webhook verify</code> for local webhook testing from scripts. <code>0.2.0-alpha.12</code> added signed webhook events to successful API verification responses when <code>webhookSecret</code> is configured. <code>0.2.0-alpha.11</code> added webhook event creation plus HMAC signing and verification helpers across core and the SDK. <code>0.2.0-alpha.10</code> added <code>zkpay intent verify-signature</code> so CLI users can verify a signed hosted checkout URL from scripts. <code>0.2.0-alpha.9</code> lets the CLI create signed hosted checkout links through <code>ZKPAY_SIGNING_SECRET</code> or <code>--signing-secret</code>. These build on the D1 replay store, checkout runtime options, signed payment intents, and optional Sui receipt binding work from earlier alpha releases.</p>
 </section><section><h2>Local Release Flow</h2>
 <pre><code class="language-bash">npm install
 npm run check
@@ -75,7 +75,9 @@ NPM_TOKEN=... npm run publish:alpha</code></pre>
 npm install zkpay-sh@next
 npx zkpay link create --amount 20 --coin USDC --receiver 0x84f --label &quot;API credits&quot; --json
 ZKPAY_SIGNING_SECRET=merchant_secret npx zkpay link create --amount 20 --coin USDC --receiver 0x84f --json
-ZKPAY_SIGNING_SECRET=merchant_secret npx zkpay intent verify-signature --intent &#039;https://zkpay.sh/pay/zkp_...?intent=...&amp;signature=...&#039; --json</code></pre></section>
+ZKPAY_SIGNING_SECRET=merchant_secret npx zkpay intent verify-signature --intent &#039;https://zkpay.sh/pay/zkp_...?intent=...&amp;signature=...&#039; --json
+ZKPAY_WEBHOOK_SECRET=webhook_secret npx zkpay webhook sign --intent &#039;&lt;json-or-checkout-url&gt;&#039; --receipt &#039;&lt;json&gt;&#039; --json
+ZKPAY_WEBHOOK_SECRET=webhook_secret npx zkpay webhook verify --event &#039;&lt;json&gt;&#039; --signature-header &#039;t=...,v1=...&#039; --json</code></pre></section>
           </article>
         </div>
       </main>
