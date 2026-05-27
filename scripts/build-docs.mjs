@@ -21,6 +21,12 @@ const pages = [
     description: "Hono API routes for creating payments and verifying receipts.",
   },
   {
+    input: "docs/mvp-status.md",
+    output: "docs/mvp-status.html",
+    title: "Alpha MVP Status",
+    description: "What is complete in the zkpay alpha MVP and what remains before production.",
+  },
+  {
     input: "docs/webhooks.md",
     output: "docs/webhooks.html",
     title: "Webhooks",
@@ -126,6 +132,7 @@ function renderSideNav(currentOutput) {
     ["Overview", "docs/index.html"],
     ["v0.1", "docs/v0.1.html"],
     ["v0.2", "docs/v0.2.html"],
+    ["MVP status", "docs/mvp-status.html"],
     ["API", "docs/api.html"],
     ["Webhooks", "docs/webhooks.html"],
     ["Architecture", "docs/architecture.html"],

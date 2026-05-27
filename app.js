@@ -77,6 +77,28 @@ const supportedGaslessStablecoins = new Set([
   "USDY",
 ]);
 
+const projectStatus = {
+  phase: "Alpha MVP complete",
+  version: "0.2.0-alpha.21",
+  checkpoint: "May 27, 2026",
+  note: "The first developer loop is closed: intent, hosted checkout, Sui digest verification, signed webhooks, and docs are ready for alpha use.",
+};
+
+const statusItems = [
+  {
+    title: "Closed for alpha",
+    body: "Payment links, hosted wallet checkout, Sui testnet verification, signed intents, managed webhooks, and the npm package are in place.",
+  },
+  {
+    title: "Still not production",
+    body: "zkLogin proving, live gasless route automation, merchant auth, dashboard operations, and a canonical receipt package remain hardening work.",
+  },
+  {
+    title: "Next restart point",
+    body: "The next phase should choose one main line: zkLogin checkout, merchant dashboard, or production gasless stablecoin routing.",
+  },
+];
+
 function renderHeader() {
   return `
     <header class="topbar">
@@ -168,6 +190,19 @@ function renderRoutePolicy() {
     .join("");
 }
 
+function renderStatusItems() {
+  return statusItems
+    .map(
+      (item) => `
+        <article class="status-card">
+          <h3>${item.title}</h3>
+          <p>${item.body}</p>
+        </article>
+      `,
+    )
+    .join("");
+}
+
 function render() {
   app.innerHTML = `
     <div class="site-shell">
@@ -192,8 +227,8 @@ function render() {
               <code>npm install zkpay-sh@next</code>
             </button>
             <div class="release-note">
-              <span>0.2.0-alpha.21</span>
-              <span>Management routes can now require Bearer or x-zkpay-api-key auth for safer dashboard and Worker deployments.</span>
+              <span>${projectStatus.version}</span>
+              <span>${projectStatus.phase} as of ${projectStatus.checkpoint}. ${projectStatus.note}</span>
             </div>
           </div>
 
@@ -405,6 +440,22 @@ await api.request("/webhooks/endpoints/endpoint_acme/test", {
           </div>
         </section>
 
+        <section class="status-section" id="status">
+          <div class="section-copy centered">
+            <p class="eyebrow">Current status</p>
+            <h2>Alpha MVP is complete. Production hardening comes next.</h2>
+            <p>
+              zkpay is at a good pause point: the developer-facing checkout
+              loop is coherent, documented, packaged, and verified by CI. It is
+              ready for demos and alpha integrations, not yet for unattended
+              production payment operations.
+            </p>
+          </div>
+          <div class="status-grid">
+            ${renderStatusItems()}
+          </div>
+        </section>
+
         <section class="usecase-section">
           <div class="section-copy centered">
             <p class="eyebrow">Who it is for</p>
@@ -431,15 +482,16 @@ await api.request("/webhooks/endpoints/endpoint_acme/test", {
 
         <section class="final-section">
           <div>
-            <p class="eyebrow">MVP target</p>
-            <h2>Close the loop for one Sui testnet stablecoin payment.</h2>
+            <p class="eyebrow">Alpha checkpoint</p>
+            <h2>The MVP loop is closed. The next phase should be focused.</h2>
             <p>
-              The near-term product is not a dashboard-heavy payment suite. It
-              is a working checkout loop: create intent, submit a Sui transfer,
-              verify the digest, and only then fulfill the order.
+              The current alpha closes the useful loop: create intent, open
+              checkout, submit a Sui transfer, verify the digest, sign webhook
+              events, and only then fulfill the order. The next build should
+              pick one production line and harden it end to end.
             </p>
           </div>
-          <a class="primary-action" href="/docs/npm-release.html">Install zkpay-sh</a>
+          <a class="primary-action" href="/docs/mvp-status.html">Read status</a>
         </section>
       </main>
 

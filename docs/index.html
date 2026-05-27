@@ -29,14 +29,16 @@
         <p class="eyebrow">zkpay docs</p>
         <h1>Stablecoin checkout infrastructure for Sui apps.</h1>
         <p class="lede">
-          zkpay starts with one developer loop: install the alpha package,
-          create a payment intent, submit a Sui testnet transfer, and verify
-          the receipt before fulfillment.
+          zkpay is at an alpha MVP checkpoint: install the alpha package,
+          create a payment intent, submit a Sui testnet transfer, verify
+          the receipt before fulfillment, and use signed webhooks for merchant
+          automation.
         </p>
 
         <div class="docs-layout">
           <aside class="side-nav">
             <a href="#quickstart">Quickstart</a>
+            <a href="#status">Status</a>
             <a href="#install">Install</a>
             <a href="#settlement">Settlement</a>
             <a href="#model">Payment model</a>
@@ -58,6 +60,18 @@
               </p>
               <pre><code>npm install zkpay-sh@next
 zkpay link create --amount 20 --coin USDC --receiver 0x84f --json</code></pre>
+            </section>
+
+            <section id="status">
+              <h2>Alpha MVP checkpoint</h2>
+              <p>
+                As of May 27, 2026, the first developer-facing loop is complete
+                enough to pause: hosted checkout, Sui digest verification,
+                signed intents, signed webhooks, managed endpoints, delivery
+                logs, docs, CI, and npm alpha packaging are aligned. This is
+                still an alpha boundary, not production payment operations.
+              </p>
+              <p><a href="./mvp-status.html">Open MVP status</a></p>
             </section>
 
             <section id="install">
@@ -144,6 +158,10 @@ const result = await zkpay.verifySuiPayment({
                 <a class="page-card" href="./v0.2.html">
                   <strong>v0.2 Testnet Settlement</strong>
                   <p>Wallet transaction building, receipt binding, and Sui RPC verification.</p>
+                </a>
+                <a class="page-card" href="./mvp-status.html">
+                  <strong>Alpha MVP Status</strong>
+                  <p>What is complete, what is not production-ready, and where the next phase should restart.</p>
                 </a>
                 <a class="page-card" href="./architecture.html">
                   <strong>Architecture</strong>

@@ -32,6 +32,17 @@
 - In-memory and D1 webhook delivery log stores.
 - Delivery log query API by payment id or event id.
 
+## Alpha MVP Checkpoint
+
+As of May 27, 2026, the alpha MVP is complete enough to pause. The current
+surface covers the developer loop from payment intent creation to hosted Sui
+testnet checkout, digest verification, signed webhook events, managed endpoints,
+delivery logs, docs, CI, and npm alpha packaging.
+
+This checkpoint is not production readiness. zkLogin checkout, live gasless
+stablecoin route automation, merchant authentication, dashboard operations,
+reconciliation, and canonical receipt package hardening remain future work.
+
 ## v0.2 Next Hardening
 
 - Durable merchant replay store adapters.

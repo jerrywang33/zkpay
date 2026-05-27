@@ -64,3 +64,10 @@ delivery storage, endpoint-specific webhook signing secrets, manual test
 delivery, optional management API key guards, and a queryable delivery log API
 are available as alpha primitives. zkLogin proving, merchant endpoint management
 UI, and a canonical deployed receipt package remain the next integration layers.
+
+As of May 27, 2026, this is the alpha MVP checkpoint. The repository is in a
+stable pause state for demos and developer review: website, docs, CI, npm alpha
+package, hosted checkout, Sui digest verification, webhook signing, endpoint
+management, and delivery logs are aligned. The architecture should stay narrow
+until the next phase deliberately chooses zkLogin checkout, merchant operations,
+or production gas routing as the main hardening line.

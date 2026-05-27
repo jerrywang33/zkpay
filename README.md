@@ -9,6 +9,22 @@ Payment Links -> zkLogin Checkout -> Gas Routing -> Receipt Verification.
 The public website lives at `https://zkpay.sh`. Product docs are published at
 `https://zkpay.sh/docs/`, with GitHub Pages workflow support for the repo docs.
 
+## Current Status
+
+As of May 27, 2026, zkpay is an alpha MVP. The first developer-facing loop is
+closed:
+
+```txt
+create intent -> open hosted checkout -> submit Sui transfer
+-> verify digest -> sign webhook event -> fulfill after verification
+```
+
+This is a good pause point for demos, docs, package installation, and early
+developer review. It is not yet a production payment operations product.
+Production hardening still needs real zkLogin checkout, live gasless stablecoin
+route automation, merchant authentication, dashboard operations, durable
+reconciliation, and a canonical audited receipt package.
+
 ## v0.1 Focus
 
 The first useful version should close one narrow payment loop:

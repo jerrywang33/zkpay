@@ -135,6 +135,12 @@ merchant creates payment link
 The MVP is complete when this flow works on Sui mainnet or testnet for one
 supported stablecoin and one merchant receiver.
 
+As of May 27, 2026, the alpha MVP checkpoint is reached for the developer-facing
+testnet loop. The project can pause with website, docs, package, hosted checkout,
+Sui digest verification, signed intents, signed webhooks, managed endpoints, and
+delivery logs aligned. This is still an alpha boundary, not a production payment
+operations claim.
+
 ## Product Surface
 
 ### CLI
