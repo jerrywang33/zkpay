@@ -123,9 +123,8 @@ Successful `/payments/verify` and `/payments/verify/sui` responses include:
 }
 ```
 
-The API still does not push HTTP callbacks to merchant endpoints. It returns the
-signed event so merchant systems can forward, store, or verify it inside their
-own fulfillment pipeline.
+Without a dispatcher, the API returns the signed event so merchant systems can
+forward, store, or verify it inside their own fulfillment pipeline.
 
 To enable opt-in delivery from the API, attach a dispatcher:
 
@@ -154,6 +153,16 @@ The dispatcher posts the canonical event JSON and sets
 `webhookDelivery` results so merchant systems can observe whether delivery was
 accepted. With a delivery store, each result is recorded by event id, payment id,
 target URL, status, attempt count, error, and completion time.
+
+Delivery logs can be queried from the same API when the configured store
+supports listing:
+
+```bash
+curl "https://api.example.com/webhooks/deliveries?paymentId=zkp_...&limit=20"
+curl "https://api.example.com/webhooks/deliveries?eventId=evt_..."
+```
+
+The built-in memory store and D1 store both support this route.
 
 ## CLI
 

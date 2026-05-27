@@ -89,7 +89,8 @@ import {
 
 `createHttpWebhookDispatcher` can be attached to the API for opt-in webhook
 delivery after successful verification. `createD1WebhookDeliveryStore` records
-delivery attempts for reconciliation and operations.
+delivery attempts and supports `GET /webhooks/deliveries` queries for
+reconciliation and operations.
 
 The package also exposes the CLI:
 

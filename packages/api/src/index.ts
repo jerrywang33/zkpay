@@ -73,6 +73,12 @@ const verifySuiPaymentRequestSchema = z.object({
     .default({}),
 });
 
+const webhookDeliveryListQuerySchema = z.object({
+  paymentId: z.string().min(1).optional(),
+  eventId: z.string().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+});
+
 export interface SuiVerifier {
   verify(
     input: SuiSettlementVerificationInput,
@@ -111,7 +117,12 @@ export interface SuiReplayStore {
 export interface D1PreparedStatementLike {
   bind(...values: unknown[]): D1PreparedStatementLike;
   first<T = unknown>(): Promise<T | null>;
+  all?<T = unknown>(): Promise<D1ResultLike<T> | T[]>;
   run(): Promise<unknown>;
+}
+
+export interface D1ResultLike<T = unknown> {
+  results: T[];
 }
 
 export interface D1DatabaseLike {
@@ -262,10 +273,19 @@ export interface WebhookDeliveryRecord {
   completedAt: string;
 }
 
+export interface WebhookDeliveryListInput {
+  paymentId?: string;
+  eventId?: string;
+  limit?: number;
+}
+
 export interface WebhookDeliveryStore {
   record(
     record: WebhookDeliveryRecord,
   ): Promise<void> | void;
+  list?(
+    input?: WebhookDeliveryListInput,
+  ): Promise<WebhookDeliveryRecord[]> | WebhookDeliveryRecord[];
 }
 
 export class InMemoryWebhookDeliveryStore implements WebhookDeliveryStore {
@@ -273,6 +293,22 @@ export class InMemoryWebhookDeliveryStore implements WebhookDeliveryStore {
 
   record(record: WebhookDeliveryRecord): void {
     this.records.push(record);
+  }
+
+  list(input: WebhookDeliveryListInput = {}): WebhookDeliveryRecord[] {
+    const limit = normalizeWebhookDeliveryLimit(input.limit);
+
+    return this.records
+      .filter((record) =>
+        input.paymentId ? record.paymentId === input.paymentId : true,
+      )
+      .filter((record) =>
+        input.eventId ? record.eventId === input.eventId : true,
+      )
+      .sort((left, right) =>
+        right.completedAt.localeCompare(left.completedAt),
+      )
+      .slice(0, limit);
   }
 }
 
@@ -300,6 +336,48 @@ export function createD1WebhookDeliveryStore(
           record.completedAt,
         )
         .run();
+    },
+    async list(input = {}) {
+      const columns =
+        "event_id, payment_id, event_type, target_url, ok, status, attempt_count, error, completed_at";
+      const limit = normalizeWebhookDeliveryLimit(input.limit);
+      let result: D1ResultLike<D1WebhookDeliveryRow> | D1WebhookDeliveryRow[];
+
+      if (input.paymentId && input.eventId) {
+        result = await allD1<D1WebhookDeliveryRow>(
+          database
+            .prepare(
+              `select ${columns} from ${tableName} where payment_id = ? and event_id = ? order by completed_at desc, id desc limit ?`,
+            )
+            .bind(input.paymentId, input.eventId, limit),
+        );
+      } else if (input.paymentId) {
+        result = await allD1<D1WebhookDeliveryRow>(
+          database
+            .prepare(
+              `select ${columns} from ${tableName} where payment_id = ? order by completed_at desc, id desc limit ?`,
+            )
+            .bind(input.paymentId, limit),
+        );
+      } else if (input.eventId) {
+        result = await allD1<D1WebhookDeliveryRow>(
+          database
+            .prepare(
+              `select ${columns} from ${tableName} where event_id = ? order by completed_at desc, id desc limit ?`,
+            )
+            .bind(input.eventId, limit),
+        );
+      } else {
+        result = await allD1<D1WebhookDeliveryRow>(
+          database
+            .prepare(
+              `select ${columns} from ${tableName} order by completed_at desc, id desc limit ?`,
+            )
+            .bind(limit),
+        );
+      }
+
+      return d1Rows(result).map(mapD1WebhookDeliveryRecord);
     },
   };
 }
@@ -428,6 +506,45 @@ export function createZkpayApi(options: ZkpayApiOptions = {}): Hono {
       service: "zkpay-api",
     }),
   );
+
+  app.get("/webhooks/deliveries", async (context) => {
+    const store = options.webhookDeliveryStore;
+
+    if (!store || !store.list) {
+      return context.json(
+        {
+          error: "webhook_delivery_store_unavailable",
+        },
+        501,
+      );
+    }
+
+    const query = webhookDeliveryListQuerySchema.safeParse(context.req.query());
+
+    if (!query.success) {
+      return context.json(
+        {
+          error: "invalid_webhook_delivery_query",
+          details: query.error.issues,
+        },
+        400,
+      );
+    }
+
+    try {
+      return context.json({
+        deliveries: await store.list(query.data),
+      });
+    } catch (error) {
+      return context.json(
+        {
+          error: "webhook_delivery_query_failed",
+          details: error instanceof Error ? error.message : String(error),
+        },
+        502,
+      );
+    }
+  });
 
   app.post("/payments", async (context) => {
     const payload = createPaymentRequestSchema.safeParse(await context.req.json());
@@ -866,6 +983,18 @@ interface D1SuiReplayRow {
   verified_at: string;
 }
 
+interface D1WebhookDeliveryRow {
+  event_id: string;
+  payment_id: string;
+  event_type: string;
+  target_url?: string | null;
+  ok: boolean | number;
+  status?: number | null;
+  attempt_count: number;
+  error?: string | null;
+  completed_at: string;
+}
+
 function replayRecordFromD1Row(row: D1SuiReplayRow): SuiReplayRecord {
   return {
     paymentId: row.payment_id,
@@ -877,6 +1006,42 @@ function replayRecordFromD1Row(row: D1SuiReplayRow): SuiReplayRecord {
     settledAt: row.settled_at,
     verifiedAt: row.verified_at,
   };
+}
+
+function mapD1WebhookDeliveryRecord(
+  row: D1WebhookDeliveryRow,
+): WebhookDeliveryRecord {
+  return {
+    eventId: row.event_id,
+    paymentId: row.payment_id,
+    eventType: row.event_type,
+    targetUrl: row.target_url === null ? undefined : row.target_url,
+    ok: Number(row.ok) === 1,
+    status: row.status === null ? undefined : row.status,
+    attemptCount: row.attempt_count,
+    error: row.error === null ? undefined : row.error,
+    completedAt: row.completed_at,
+  };
+}
+
+function d1Rows<T>(result: D1ResultLike<T> | T[]): T[] {
+  return Array.isArray(result) ? result : result.results;
+}
+
+async function allD1<T>(
+  statement: D1PreparedStatementLike,
+): Promise<D1ResultLike<T> | T[]> {
+  if (!statement.all) {
+    throw new Error("D1 all() is required for webhook delivery listing");
+  }
+
+  return statement.all<T>();
+}
+
+function normalizeWebhookDeliveryLimit(limit: number | undefined): number {
+  if (limit === undefined || !Number.isFinite(limit)) return 50;
+
+  return Math.min(Math.max(Math.trunc(limit), 1), 100);
 }
 
 function sqlIdentifier(value: string): string {

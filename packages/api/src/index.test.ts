@@ -281,6 +281,36 @@ describe("@zkpay/api", () => {
         completedAt: "2026-05-25T01:02:00.000Z",
       },
     ]);
+
+    const deliveryListResponse = await app.request(
+      `/webhooks/deliveries?paymentId=${payment.intent.id}`,
+    );
+    const deliveryListJson = await deliveryListResponse.json();
+
+    expect(deliveryListResponse.status).toBe(200);
+    expect(deliveryListJson.deliveries).toEqual(deliveryStore.records);
+  });
+
+  it("returns unavailable when webhook delivery logs are not configured", async () => {
+    const app = createZkpayApi();
+    const response = await app.request("/webhooks/deliveries");
+    const json = await response.json();
+
+    expect(response.status).toBe(501);
+    expect(json).toEqual({
+      error: "webhook_delivery_store_unavailable",
+    });
+  });
+
+  it("rejects invalid webhook delivery list queries", async () => {
+    const app = createZkpayApi({
+      webhookDeliveryStore: new InMemoryWebhookDeliveryStore(),
+    });
+    const response = await app.request("/webhooks/deliveries?limit=0");
+    const json = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(json.error).toBe("invalid_webhook_delivery_query");
   });
 
   it("records webhook delivery results with a D1 adapter", async () => {
@@ -359,6 +389,14 @@ describe("@zkpay/api", () => {
         completedAt: "2026-05-25T01:02:00.000Z",
       },
     ]);
+
+    const deliveryListResponse = await app.request(
+      `/webhooks/deliveries?eventId=${json.webhook.event.id}&limit=5`,
+    );
+    const deliveryListJson = await deliveryListResponse.json();
+
+    expect(deliveryListResponse.status).toBe(200);
+    expect(deliveryListJson.deliveries).toEqual(database.webhookDeliveryRecords);
   });
 
   it("creates an HTTP webhook dispatcher", async () => {
@@ -924,6 +962,52 @@ class FakeD1PreparedStatement implements D1PreparedStatementLike {
       settled_at: record.settledAt,
       verified_at: record.verifiedAt,
     } as T;
+  }
+
+  async all<T = unknown>(): Promise<{ results: T[] }> {
+    let records = [...this.database.webhookDeliveryRecords];
+    let limit = 50;
+
+    if (this.query.includes("where payment_id = ? and event_id = ?")) {
+      const paymentId = String(this.values[0]);
+      const eventId = String(this.values[1]);
+      limit = Number(this.values[2]);
+      records = records.filter(
+        (record) =>
+          record.paymentId === paymentId && record.eventId === eventId,
+      );
+    } else if (this.query.includes("where payment_id = ?")) {
+      const paymentId = String(this.values[0]);
+      limit = Number(this.values[1]);
+      records = records.filter((record) => record.paymentId === paymentId);
+    } else if (this.query.includes("where event_id = ?")) {
+      const eventId = String(this.values[0]);
+      limit = Number(this.values[1]);
+      records = records.filter((record) => record.eventId === eventId);
+    } else {
+      limit = Number(this.values[0]);
+    }
+
+    const results = records
+      .sort((left, right) =>
+        right.completedAt.localeCompare(left.completedAt),
+      )
+      .slice(0, limit)
+      .map((record) => ({
+        event_id: record.eventId,
+        payment_id: record.paymentId,
+        event_type: record.eventType,
+        target_url: record.targetUrl ?? null,
+        ok: record.ok ? 1 : 0,
+        status: record.status ?? null,
+        attempt_count: record.attemptCount,
+        error: record.error ?? null,
+        completed_at: record.completedAt,
+      }));
+
+    return {
+      results: results as T[],
+    };
   }
 
   async run(): Promise<unknown> {

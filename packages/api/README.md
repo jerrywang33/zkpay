@@ -53,6 +53,11 @@ const app = createZkpayApi({
 Delivery logs are best-effort. If the log store fails, payment verification and
 webhook response generation still complete.
 
+Configured delivery stores can be queried through
+`GET /webhooks/deliveries?paymentId=zkp_...` or
+`GET /webhooks/deliveries?eventId=evt_...` for reconciliation and operations
+views.
+
 `POST /payments` also accepts `options.checkout` so merchant backends can
 generate hosted checkout URLs with `network`, `coinType`, `decimals`, and
 `bindingPackageId` already attached.

@@ -251,6 +251,39 @@ The delivery log store is best-effort. If it fails, verification responses still
 return the signed webhook event and delivery results with `webhookDeliveryLog`
 set to a failed log status.
 
+### `GET /webhooks/deliveries`
+
+When the API is configured with a delivery store that supports listing, webhook
+attempts can be queried for reconciliation or operations screens:
+
+```bash
+curl "https://api.example.com/webhooks/deliveries?paymentId=zkp_...&limit=20"
+curl "https://api.example.com/webhooks/deliveries?eventId=evt_..."
+```
+
+Response:
+
+```json
+{
+  "deliveries": [
+    {
+      "eventId": "evt_...",
+      "paymentId": "zkp_...",
+      "eventType": "payment.succeeded",
+      "targetUrl": "https://merchant.example/webhooks/zkpay",
+      "ok": true,
+      "status": 202,
+      "attemptCount": 1,
+      "completedAt": "2026-05-25T01:02:00.000Z"
+    }
+  ]
+}
+```
+
+`paymentId`, `eventId`, and `limit` are optional. `limit` defaults to `50` and
+is capped at `100`. If no list-capable delivery store is configured, the route
+returns `501` with `webhook_delivery_store_unavailable`.
+
 ## Replay Guard
 
 `createZkpayApi()` enables an in-process Sui replay store by default. After a

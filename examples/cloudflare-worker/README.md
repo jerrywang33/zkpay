@@ -35,6 +35,8 @@ digests and a second digest for an already-settled payment.
 When `ZKPAY_WEBHOOK_URL` and `ZKPAY_WEBHOOK_SECRET` are configured, successful
 verification responses can post signed `payment.succeeded` events and record
 delivery attempts in `zkpay_webhook_delivery`.
+Those attempts are queryable through `GET /webhooks/deliveries?paymentId=...`
+or `GET /webhooks/deliveries?eventId=...`.
 
 The Worker stays non-custodial. Merchant fulfillment should happen after the
 backend receives a successful verification response.

@@ -214,6 +214,26 @@ const app = createZkpayApi({
   }
 }</code></pre>
 <p>The delivery log store is best-effort. If it fails, verification responses still return the signed webhook event and delivery results with <code>webhookDeliveryLog</code> set to a failed log status.</p>
+<h3><code>GET /webhooks/deliveries</code></h3>
+<p>When the API is configured with a delivery store that supports listing, webhook attempts can be queried for reconciliation or operations screens:</p>
+<pre><code class="language-bash">curl &quot;https://api.example.com/webhooks/deliveries?paymentId=zkp_...&amp;limit=20&quot;
+curl &quot;https://api.example.com/webhooks/deliveries?eventId=evt_...&quot;</code></pre>
+<p>Response:</p>
+<pre><code class="language-json">{
+  &quot;deliveries&quot;: [
+    {
+      &quot;eventId&quot;: &quot;evt_...&quot;,
+      &quot;paymentId&quot;: &quot;zkp_...&quot;,
+      &quot;eventType&quot;: &quot;payment.succeeded&quot;,
+      &quot;targetUrl&quot;: &quot;https://merchant.example/webhooks/zkpay&quot;,
+      &quot;ok&quot;: true,
+      &quot;status&quot;: 202,
+      &quot;attemptCount&quot;: 1,
+      &quot;completedAt&quot;: &quot;2026-05-25T01:02:00.000Z&quot;
+    }
+  ]
+}</code></pre>
+<p><code>paymentId</code>, <code>eventId</code>, and <code>limit</code> are optional. <code>limit</code> defaults to <code>50</code> and is capped at <code>100</code>. If no list-capable delivery store is configured, the route returns <code>501</code> with <code>webhook_delivery_store_unavailable</code>.</p>
 </section><section><h2>Replay Guard</h2>
 <p><code>createZkpayApi()</code> enables an in-process Sui replay store by default. After a successful <code>/payments/verify/sui</code> response, the store records the payment id and transaction digest. A repeated digest or a second digest for the same payment id returns <code>409</code>.</p>
 <p>Replay response shape:</p>
