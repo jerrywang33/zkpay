@@ -170,9 +170,12 @@ When a `webhookDispatcher` is also configured, the API can attempt delivery to
 merchant webhook endpoints and include delivery results in the response.
 `createD1WebhookEndpointRegistry` lets the dispatcher resolve endpoints by
 merchant or event type and powers `POST/GET/PATCH /webhooks/endpoints` when used
-as `webhookEndpointStore`. `createD1WebhookDeliveryStore` records delivery
-attempts for Cloudflare D1 deployments and powers `GET /webhooks/deliveries`
-queries by payment id or event id.
+as `webhookEndpointStore`. Managed endpoints can carry their own signing secret,
+return redacted headers through management responses, and support
+`POST /webhooks/endpoints/:id/test` for one-click test delivery.
+`createD1WebhookDeliveryStore` records delivery attempts for Cloudflare D1
+deployments and powers `GET /webhooks/deliveries` queries by payment id or event
+id.
 
 The CLI reads `ZKPAY_SIGNING_SECRET` for signed hosted checkout links:
 

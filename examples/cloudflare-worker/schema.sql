@@ -34,6 +34,7 @@ create table if not exists zkpay_webhook_endpoints (
   url text not null,
   headers_json text,
   event_types_json text,
+  signing_secret text,
   enabled integer not null default 1,
   created_at text not null,
   updated_at text not null

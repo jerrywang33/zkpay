@@ -47,6 +47,11 @@ const capabilities = [
     body: "Give merchants a deterministic way to verify settlement and optional onchain binding before fulfillment.",
     meta: "Digest / nonce / event / webhook",
   },
+  {
+    title: "Managed Webhooks",
+    body: "Register merchant endpoints, sign deliveries per destination, redact secrets, and test delivery before orders depend on it.",
+    meta: "Endpoint API / D1 / test events",
+  },
 ];
 
 const useCases = [
@@ -187,8 +192,8 @@ function render() {
               <code>npm install zkpay-sh@next</code>
             </button>
             <div class="release-note">
-              <span>0.2.0-alpha.3</span>
-              <span>SDK, API, and CLI can now generate hosted checkout links with Sui runtime parameters.</span>
+              <span>0.2.0-alpha.20</span>
+              <span>Managed webhooks now support endpoint-specific signing secrets, redacted responses, and manual test delivery.</span>
             </div>
           </div>
 
@@ -290,8 +295,8 @@ function render() {
             <p>
               The public alpha is live as <strong>zkpay-sh@next</strong>. It bundles the
               SDK, core primitives, CLI, Sui transaction builder, hosted wallet
-              handoff, and RPC receipt verifier while the merchant keeps custody
-              and fulfillment logic.
+              handoff, RPC receipt verifier, and managed webhook APIs while the
+              merchant keeps custody and fulfillment logic.
             </p>
           </div>
           <div class="code-stack">
@@ -359,6 +364,25 @@ if (!result.ok) throw new Error(result.errors.join(", "));</code></pre>
 
 // checkout connects a Sui wallet, submits payment,
 // returns txDigest, then builds /payments/verify/sui payload</code></pre>
+            </article>
+            <article class="code-panel">
+              <div class="code-head">
+                <span>Webhook endpoint</span>
+                <button type="button" data-copy="curl -X POST https://api.example.com/webhooks/endpoints/endpoint_acme/test -H 'content-type: application/json' -d '{&quot;paymentId&quot;:&quot;zkp_webhook_test&quot;,&quot;data&quot;:{&quot;reason&quot;:&quot;manual-test&quot;}}'">Copy</button>
+              </div>
+              <pre><code>await api.request("/webhooks/endpoints", {
+  method: "POST",
+  body: JSON.stringify({
+    id: "endpoint_acme",
+    merchantId: "merchant_acme",
+    url: "https://merchant.example/webhooks/zkpay",
+    signingSecret: "whsec_..."
+  })
+});
+
+await api.request("/webhooks/endpoints/endpoint_acme/test", {
+  method: "POST"
+});</code></pre>
             </article>
             <article class="code-panel">
               <div class="code-head">

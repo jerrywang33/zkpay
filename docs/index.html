@@ -159,7 +159,7 @@ const result = await zkpay.verifySuiPayment({
                 </a>
                 <a class="page-card" href="./webhooks.html">
                   <strong>Webhooks</strong>
-                  <p>Signed payment events for merchant fulfillment and reconciliation.</p>
+                  <p>Signed events, managed endpoints, test delivery, and reconciliation.</p>
                 </a>
                 <a class="page-card" href="./npm-release.html">
                   <strong>npm Release</strong>
@@ -189,7 +189,8 @@ const result = await zkpay.verifySuiPayment({
               <pre><code>GET  /health
 POST /payments
 POST /payments/verify
-POST /payments/verify/sui</code></pre>
+POST /payments/verify/sui
+POST /webhooks/endpoints/:id/test</code></pre>
               <p><a href="./api.html">Open API reference</a></p>
             </section>
 
@@ -198,7 +199,9 @@ POST /payments/verify/sui</code></pre>
               <p>
                 Webhook events use <code>t=...,v1=...</code> HMAC headers so
                 merchant systems can verify asynchronous payment events before
-                fulfillment, ledger updates, or reconciliation.
+                fulfillment, ledger updates, or reconciliation. Managed
+                endpoints can also carry their own signing secret and send a
+                signed test event before production orders depend on them.
               </p>
               <pre><code>const event = zkpay.createWebhookEvent({
   type: "payment.succeeded",

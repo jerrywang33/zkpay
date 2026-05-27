@@ -92,9 +92,11 @@ import {
 delivery after successful verification. `createD1WebhookEndpointRegistry` lets
 the dispatcher load endpoints per merchant/event and can also power
 `POST /webhooks/endpoints`, `GET /webhooks/endpoints`, and
-`PATCH /webhooks/endpoints/:id`. `createD1WebhookDeliveryStore` records delivery
-attempts and supports `GET /webhooks/deliveries` queries for reconciliation and
-operations.
+`PATCH /webhooks/endpoints/:id`. Endpoint management responses redact sensitive
+headers, expose only `hasSigningSecret`, and support
+`POST /webhooks/endpoints/:id/test` for signed manual delivery checks.
+`createD1WebhookDeliveryStore` records delivery attempts and supports
+`GET /webhooks/deliveries` queries for reconciliation and operations.
 
 The package also exposes the CLI:
 

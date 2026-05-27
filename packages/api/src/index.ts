@@ -6,6 +6,7 @@ import {
   paymentIntentInputSchema,
   paymentIntentSchema,
   paymentReceiptSchema,
+  signWebhookEvent,
   type PaymentIntent,
   type PaymentReceipt,
   type SuiReceiptVerifierOptions,
@@ -107,6 +108,7 @@ const webhookEndpointCreateSchema = z.object({
   url: z.string().url().max(2048),
   headers: webhookEndpointHeadersSchema,
   eventTypes: webhookEndpointEventTypesSchema,
+  signingSecret: z.string().min(1).max(4096).optional(),
   enabled: z.boolean().optional(),
 });
 
@@ -124,6 +126,7 @@ const webhookEndpointPatchSchema = z
       .max(8)
       .nullable()
       .optional(),
+    signingSecret: z.string().min(1).max(4096).nullable().optional(),
     enabled: z.boolean().optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
@@ -142,6 +145,17 @@ const webhookEndpointListQuerySchema = z.object({
   enabled: optionalBooleanQuerySchema,
   limit: z.coerce.number().int().min(1).max(100).optional(),
 });
+
+const webhookEndpointTestSchema = z
+  .object({
+    paymentId: z
+      .string()
+      .regex(/^zkp_[a-zA-Z0-9_-]+$/, "Expected a zkpay payment id")
+      .optional(),
+    eventType: webhookEventTypeSchema.optional(),
+    data: z.record(z.unknown()).optional(),
+  })
+  .default({});
 
 export interface SuiVerifier {
   verify(
@@ -365,6 +379,10 @@ export interface WebhookEndpoint extends HttpWebhookTarget {
   updatedAt: string;
 }
 
+export interface PublicWebhookEndpoint extends Omit<WebhookEndpoint, "signingSecret"> {
+  hasSigningSecret: boolean;
+}
+
 export interface WebhookEndpointRegistry {
   listTargets(
     webhook: SignedWebhookEvent,
@@ -377,6 +395,7 @@ export interface WebhookEndpointCreateInput {
   url: string;
   headers?: Record<string, string>;
   eventTypes?: readonly WebhookEvent["type"][];
+  signingSecret?: string;
   enabled?: boolean;
   now?: Date | string;
 }
@@ -386,6 +405,7 @@ export interface WebhookEndpointPatchInput {
   url?: string;
   headers?: Record<string, string> | null;
   eventTypes?: readonly WebhookEvent["type"][] | null;
+  signingSecret?: string | null;
   enabled?: boolean;
   now?: Date | string;
 }
@@ -400,6 +420,7 @@ export interface WebhookEndpointStore extends WebhookEndpointRegistry {
   create(
     input: WebhookEndpointCreateInput,
   ): Promise<WebhookEndpoint> | WebhookEndpoint;
+  get(id: string): Promise<WebhookEndpoint | null> | WebhookEndpoint | null;
   list(
     input?: WebhookEndpointListInput,
   ): Promise<WebhookEndpoint[]> | WebhookEndpoint[];
@@ -454,6 +475,10 @@ export class InMemoryWebhookEndpointRegistry implements WebhookEndpointStore {
     return endpoint;
   }
 
+  get(id: string): WebhookEndpoint | null {
+    return this.endpoints.find((endpoint) => endpoint.id === id) ?? null;
+  }
+
   list(input: WebhookEndpointListInput = {}): WebhookEndpoint[] {
     const limit = normalizeWebhookEndpointLimit(input.limit);
 
@@ -488,6 +513,7 @@ export class InMemoryWebhookEndpointRegistry implements WebhookEndpointStore {
       .map((endpoint) => ({
         url: endpoint.url,
         headers: endpoint.headers,
+        signingSecret: endpoint.signingSecret,
       }));
   }
 }
@@ -597,7 +623,7 @@ export function createD1WebhookEndpointRegistry(
 
       await database
         .prepare(
-          `insert into ${tableName} (id, merchant_id, url, headers_json, event_types_json, enabled, created_at, updated_at) values (?, ?, ?, ?, ?, ?, ?, ?)`,
+          `insert into ${tableName} (id, merchant_id, url, headers_json, event_types_json, signing_secret, enabled, created_at, updated_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .bind(
           endpoint.id,
@@ -605,6 +631,7 @@ export function createD1WebhookEndpointRegistry(
           endpoint.url,
           serializeOptionalJson(endpoint.headers),
           serializeOptionalJson(endpoint.eventTypes),
+          endpoint.signingSecret ?? null,
           endpoint.enabled ? 1 : 0,
           endpoint.createdAt,
           endpoint.updatedAt,
@@ -613,9 +640,12 @@ export function createD1WebhookEndpointRegistry(
 
       return endpoint;
     },
+    async get(id) {
+      return findD1WebhookEndpoint(database, tableName, id);
+    },
     async list(input = {}) {
       const columns =
-        "id, merchant_id, url, headers_json, event_types_json, enabled, created_at, updated_at";
+        "id, merchant_id, url, headers_json, event_types_json, signing_secret, enabled, created_at, updated_at";
       const limit = normalizeWebhookEndpointLimit(input.limit);
       let result: D1ResultLike<D1WebhookEndpointRow> | D1WebhookEndpointRow[];
 
@@ -664,13 +694,14 @@ export function createD1WebhookEndpointRegistry(
 
       await database
         .prepare(
-          `update ${tableName} set merchant_id = ?, url = ?, headers_json = ?, event_types_json = ?, enabled = ?, updated_at = ? where id = ?`,
+          `update ${tableName} set merchant_id = ?, url = ?, headers_json = ?, event_types_json = ?, signing_secret = ?, enabled = ?, updated_at = ? where id = ?`,
         )
         .bind(
           endpoint.merchantId ?? null,
           endpoint.url,
           serializeOptionalJson(endpoint.headers),
           serializeOptionalJson(endpoint.eventTypes),
+          endpoint.signingSecret ?? null,
           endpoint.enabled ? 1 : 0,
           endpoint.updatedAt,
           endpoint.id,
@@ -682,7 +713,7 @@ export function createD1WebhookEndpointRegistry(
     async listTargets(webhook) {
       const merchantId = webhook.event.intent?.metadata.merchantId;
       const columns =
-        "id, merchant_id, url, headers_json, event_types_json, enabled, created_at, updated_at";
+        "id, merchant_id, url, headers_json, event_types_json, signing_secret, enabled, created_at, updated_at";
       const result = merchantId
         ? await allD1<D1WebhookEndpointRow>(
             database
@@ -704,6 +735,7 @@ export function createD1WebhookEndpointRegistry(
         .map((endpoint) => ({
           url: endpoint.url,
           headers: endpoint.headers,
+          signingSecret: endpoint.signingSecret,
         }));
     },
   };
@@ -721,6 +753,7 @@ export function createD1WebhookEndpointRegistrySchema(
     "  url text not null,",
     "  headers_json text,",
     "  event_types_json text,",
+    "  signing_secret text,",
     "  enabled integer not null default 1,",
     "  created_at text not null,",
     "  updated_at text not null",
@@ -738,6 +771,7 @@ export interface ZkpayApiOptions extends ZkpayClientOptions {
   webhookDispatcher?: WebhookDispatcher;
   webhookDeliveryStore?: WebhookDeliveryStore | false;
   webhookEndpointStore?: WebhookEndpointStore | false;
+  webhookTestFetch?: typeof globalThis.fetch;
 }
 
 export interface SignedWebhookEvent {
@@ -770,6 +804,7 @@ export interface WebhookDispatcher {
 export interface HttpWebhookTarget {
   url: string;
   headers?: Record<string, string>;
+  signingSecret?: string;
 }
 
 export interface WebhookRetryOptions {
@@ -907,7 +942,7 @@ export function createZkpayApi(options: ZkpayApiOptions = {}): Hono {
 
     try {
       return context.json({
-        endpoints: await store.list(query.data),
+        endpoints: (await store.list(query.data)).map(publicWebhookEndpoint),
       });
     } catch (error) {
       return context.json(
@@ -947,9 +982,11 @@ export function createZkpayApi(options: ZkpayApiOptions = {}): Hono {
     }
 
     try {
+      const endpoint = await store.create(payload.data);
+
       return context.json(
         {
-          endpoint: await store.create(payload.data),
+          endpoint: publicWebhookEndpoint(endpoint),
         },
         201,
       );
@@ -1015,7 +1052,7 @@ export function createZkpayApi(options: ZkpayApiOptions = {}): Hono {
       }
 
       return context.json({
-        endpoint,
+        endpoint: publicWebhookEndpoint(endpoint),
       });
     } catch (error) {
       return context.json(
@@ -1026,6 +1063,105 @@ export function createZkpayApi(options: ZkpayApiOptions = {}): Hono {
         502,
       );
     }
+  });
+
+  app.post("/webhooks/endpoints/:id/test", async (context) => {
+    const store = options.webhookEndpointStore;
+
+    if (!store) {
+      return context.json(
+        {
+          error: "webhook_endpoint_store_unavailable",
+        },
+        501,
+      );
+    }
+
+    const id = webhookEndpointIdSchema.safeParse(context.req.param("id"));
+
+    if (!id.success) {
+      return context.json(
+        {
+          error: "invalid_webhook_endpoint_id",
+          details: id.error.issues,
+        },
+        400,
+      );
+    }
+
+    const payload = webhookEndpointTestSchema.safeParse(
+      await readOptionalJson(context),
+    );
+
+    if (!payload.success) {
+      return context.json(
+        {
+          error: "invalid_webhook_endpoint_test_request",
+          details: payload.error.issues,
+        },
+        400,
+      );
+    }
+
+    const endpoint = await store.get(id.data);
+
+    if (!endpoint) {
+      return context.json(
+        {
+          error: "webhook_endpoint_not_found",
+        },
+        404,
+      );
+    }
+
+    const signingSecret = endpoint.signingSecret ?? options.webhookSecret;
+
+    if (!signingSecret) {
+      return context.json(
+        {
+          error: "webhook_endpoint_signing_secret_missing",
+        },
+        400,
+      );
+    }
+
+    const fetchFn = options.webhookTestFetch ?? globalThis.fetch;
+
+    if (!fetchFn) {
+      return context.json(
+        {
+          error: "webhook_endpoint_test_fetch_unavailable",
+        },
+        502,
+      );
+    }
+
+    const event = client.createWebhookEvent({
+      type: payload.data.eventType ?? "payment.updated",
+      paymentId: payload.data.paymentId ?? "zkp_webhook_test",
+      data: {
+        source: "webhooks.endpoints.test",
+        endpointId: endpoint.id,
+        ...(payload.data.data ?? {}),
+      },
+    });
+    const webhook = {
+      event,
+      signatureHeader: client.signWebhookEvent(event, signingSecret),
+    };
+    const delivery = await deliverHttpWebhook(
+      webhook,
+      endpoint,
+      fetchFn,
+      {
+        attempts: 1,
+      },
+    );
+
+    return context.json({
+      endpoint: publicWebhookEndpoint(endpoint),
+      delivery,
+    });
   });
 
   app.post("/payments", async (context) => {
@@ -1217,6 +1353,45 @@ export function createZkpayApi(options: ZkpayApiOptions = {}): Hono {
   return app;
 }
 
+async function readOptionalJson(context: {
+  req: { json(): Promise<unknown> };
+}): Promise<unknown> {
+  try {
+    return await context.req.json();
+  } catch {
+    return {};
+  }
+}
+
+function publicWebhookEndpoint(
+  endpoint: WebhookEndpoint,
+): PublicWebhookEndpoint {
+  const { signingSecret: _signingSecret, ...publicEndpoint } = endpoint;
+
+  return {
+    ...publicEndpoint,
+    headers: redactWebhookEndpointHeaders(endpoint.headers),
+    hasSigningSecret: Boolean(endpoint.signingSecret),
+  };
+}
+
+function redactWebhookEndpointHeaders(
+  headers: Record<string, string> | undefined,
+): Record<string, string> | undefined {
+  if (!headers) return undefined;
+
+  return Object.fromEntries(
+    Object.entries(headers).map(([key, value]) => [
+      key,
+      isSensitiveWebhookHeader(key) ? "[redacted]" : value,
+    ]),
+  );
+}
+
+function isSensitiveWebhookHeader(key: string): boolean {
+  return /authorization|token|secret|api[-_]?key/i.test(key);
+}
+
 async function deliverHttpWebhook(
   webhook: SignedWebhookEvent,
   target: HttpWebhookTarget,
@@ -1235,8 +1410,8 @@ async function deliverHttpWebhook(
         method: "POST",
         headers: {
           "content-type": "application/json",
-          "zkpay-signature": webhook.signatureHeader,
           ...target.headers,
+          "zkpay-signature": signWebhookForTarget(webhook, target),
         },
         body: JSON.stringify(webhook.event),
       });
@@ -1271,6 +1446,15 @@ async function deliverHttpWebhook(
     error,
     completedAt: new Date().toISOString(),
   };
+}
+
+function signWebhookForTarget(
+  webhook: SignedWebhookEvent,
+  target: HttpWebhookTarget,
+): string {
+  return target.signingSecret
+    ? signWebhookEvent(webhook.event, target.signingSecret)
+    : webhook.signatureHeader;
 }
 
 async function createWebhookResponse(
@@ -1461,7 +1645,7 @@ async function findD1WebhookEndpoint(
 ): Promise<WebhookEndpoint | null> {
   const row = await database
     .prepare(
-      `select id, merchant_id, url, headers_json, event_types_json, enabled, created_at, updated_at from ${tableName} where id = ? limit 1`,
+      `select id, merchant_id, url, headers_json, event_types_json, signing_secret, enabled, created_at, updated_at from ${tableName} where id = ? limit 1`,
     )
     .bind(id)
     .first<D1WebhookEndpointRow>();
@@ -1498,6 +1682,7 @@ interface D1WebhookEndpointRow {
   url: string;
   headers_json?: string | null;
   event_types_json?: string | null;
+  signing_secret?: string | null;
   enabled: boolean | number;
   created_at: string;
   updated_at: string;
@@ -1527,6 +1712,7 @@ function createWebhookEndpoint(
     url: input.url,
     headers: input.headers,
     eventTypes: input.eventTypes,
+    signingSecret: input.signingSecret,
     enabled: input.enabled ?? true,
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -1552,6 +1738,10 @@ function patchWebhookEndpoint(
       input.eventTypes === undefined
         ? endpoint.eventTypes
         : input.eventTypes ?? undefined,
+    signingSecret:
+      input.signingSecret === undefined
+        ? endpoint.signingSecret
+        : input.signingSecret?.trim() || undefined,
     enabled: input.enabled ?? endpoint.enabled,
     updatedAt: toTimestamp(input.now),
   });
@@ -1566,6 +1756,7 @@ function normalizeWebhookEndpoint(endpoint: WebhookEndpoint): WebhookEndpoint {
     eventTypes: endpoint.eventTypes
       ? [...new Set(endpoint.eventTypes)]
       : undefined,
+    signingSecret: endpoint.signingSecret?.trim() || undefined,
     enabled: endpoint.enabled,
     createdAt: endpoint.createdAt,
     updatedAt: endpoint.updatedAt,
@@ -1579,6 +1770,8 @@ function mapD1WebhookEndpoint(row: D1WebhookEndpointRow): WebhookEndpoint {
     url: row.url,
     headers: parseD1StringRecord(row.headers_json, "headers_json"),
     eventTypes: parseD1WebhookEventTypes(row.event_types_json),
+    signingSecret:
+      row.signing_secret === null ? undefined : row.signing_secret,
     enabled: Number(row.enabled) === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -1617,6 +1810,7 @@ function normalizeWebhookTarget(target: HttpWebhookTarget): HttpWebhookTarget {
   return {
     ...target,
     url: target.url.trim(),
+    signingSecret: target.signingSecret?.trim() || undefined,
   };
 }
 

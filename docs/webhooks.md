@@ -154,10 +154,13 @@ const app = createZkpayApi({
 ```
 
 The dispatcher posts the canonical event JSON and sets
-`zkpay-signature: t=...,v1=...`. Verification responses include
-`webhookDelivery` results so merchant systems can observe whether delivery was
-accepted. With a delivery store, each result is recorded by event id, payment id,
-target URL, status, attempt count, error, and completion time.
+`zkpay-signature: t=...,v1=...`. Static targets use the API-level
+`webhookSecret`; managed endpoints can carry an endpoint-specific signing
+secret so each merchant destination can rotate independently. Verification
+responses include `webhookDelivery` results so merchant systems can observe
+whether delivery was accepted. With a delivery store, each result is recorded by
+event id, payment id, target URL, status, attempt count, error, and completion
+time.
 
 Endpoint registries are useful once a merchant can manage webhook endpoints
 from a dashboard. The built-in D1 registry reads `zkpay_webhook_endpoints`,
@@ -165,8 +168,11 @@ selects enabled global endpoints plus endpoints whose `merchant_id` matches
 `intent.metadata.merchantId`, then filters by `event_types_json` when present.
 When `webhookEndpointStore` is configured, the API also exposes
 `POST /webhooks/endpoints`, `GET /webhooks/endpoints`, and
-`PATCH /webhooks/endpoints/:id` for merchant endpoint management. These routes
-are alpha primitives and should sit behind merchant authentication in production.
+`PATCH /webhooks/endpoints/:id` for merchant endpoint management. Management
+responses redact sensitive headers and only expose `hasSigningSecret`.
+`POST /webhooks/endpoints/:id/test` sends one signed `payment.updated` test
+event to the stored endpoint URL. These routes are alpha primitives and should
+sit behind merchant authentication in production.
 
 Delivery logs can be queried from the same API when the configured store
 supports listing:

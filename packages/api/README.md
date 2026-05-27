@@ -63,7 +63,9 @@ HTTP dispatcher resolve targets per event. A registry endpoint can be global or
 scoped to `intent.metadata.merchantId`, and can optionally restrict event types.
 When supplied as `webhookEndpointStore`, the same adapters power
 `POST /webhooks/endpoints`, `GET /webhooks/endpoints`, and
-`PATCH /webhooks/endpoints/:id`.
+`PATCH /webhooks/endpoints/:id`. Managed endpoints can store their own
+`signingSecret`, return only `hasSigningSecret` in management responses, and
+send a signed test event through `POST /webhooks/endpoints/:id/test`.
 
 Configured delivery stores can be queried through
 `GET /webhooks/deliveries?paymentId=zkp_...` or

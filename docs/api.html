@@ -229,6 +229,7 @@ const app = createZkpayApi({
     &quot;merchantId&quot;: &quot;merchant_acme&quot;,
     &quot;url&quot;: &quot;https://merchant.example/webhooks/zkpay&quot;,
     &quot;eventTypes&quot;: [&quot;payment.succeeded&quot;],
+    &quot;signingSecret&quot;: &quot;whsec_merchant_endpoint_secret&quot;,
     &quot;enabled&quot;: true
   }&#039;</code></pre>
 <p>Response:</p>
@@ -239,10 +240,12 @@ const app = createZkpayApi({
     &quot;url&quot;: &quot;https://merchant.example/webhooks/zkpay&quot;,
     &quot;eventTypes&quot;: [&quot;payment.succeeded&quot;],
     &quot;enabled&quot;: true,
+    &quot;hasSigningSecret&quot;: true,
     &quot;createdAt&quot;: &quot;2026-05-27T05:30:00.000Z&quot;,
     &quot;updatedAt&quot;: &quot;2026-05-27T05:30:00.000Z&quot;
   }
 }</code></pre>
+<p><code>signingSecret</code> is stored for delivery signing and is never returned. Management responses include <code>hasSigningSecret</code> and redact sensitive headers such as <code>authorization</code>, <code>token</code>, <code>secret</code>, and <code>x-api-key</code>.</p>
 <h3><code>GET /webhooks/endpoints</code></h3>
 <pre><code class="language-bash">curl &quot;https://api.example.com/webhooks/endpoints?merchantId=merchant_acme&amp;enabled=true&quot;</code></pre>
 <p>Returns <code>{ &quot;endpoints&quot;: [...] }</code>. <code>merchantId</code>, <code>enabled</code>, and <code>limit</code> are optional. <code>limit</code> defaults to <code>50</code> and is capped at <code>100</code>.</p>
@@ -251,6 +254,15 @@ const app = createZkpayApi({
   -H &quot;content-type: application/json&quot; \
   -d &#039;{ &quot;enabled&quot;: false }&#039;</code></pre>
 <p>Returns the updated endpoint, or <code>404</code> with <code>webhook_endpoint_not_found</code>. Production deployments should protect these management routes with merchant authentication before exposing them outside a trusted backend boundary.</p>
+<h3><code>POST /webhooks/endpoints/:id/test</code></h3>
+<pre><code class="language-bash">curl -X POST &quot;https://api.example.com/webhooks/endpoints/endpoint_acme_primary/test&quot; \
+  -H &quot;content-type: application/json&quot; \
+  -d &#039;{
+    &quot;paymentId&quot;: &quot;zkp_webhook_test&quot;,
+    &quot;eventType&quot;: &quot;payment.updated&quot;,
+    &quot;data&quot;: { &quot;reason&quot;: &quot;manual-test&quot; }
+  }&#039;</code></pre>
+<p>The API sends one signed test event to the endpoint URL and returns <code>{ &quot;endpoint&quot;: ..., &quot;delivery&quot;: ... }</code>. The endpoint&#039;s own <code>signingSecret</code> is used when present; otherwise <code>webhookSecret</code> is used as a fallback.</p>
 <h3><code>GET /webhooks/deliveries</code></h3>
 <p>When the API is configured with a delivery store that supports listing, webhook attempts can be queried for reconciliation or operations screens:</p>
 <pre><code class="language-bash">curl &quot;https://api.example.com/webhooks/deliveries?paymentId=zkp_...&amp;limit=20&quot;

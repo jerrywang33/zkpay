@@ -26,6 +26,8 @@
 - Opt-in HTTP webhook dispatcher with retry policy.
 - In-memory and D1 webhook endpoint registries.
 - Webhook endpoint management API.
+- Endpoint-specific webhook signing secrets and redacted management responses.
+- Manual webhook endpoint test delivery API.
 - In-memory and D1 webhook delivery log stores.
 - Delivery log query API by payment id or event id.
 

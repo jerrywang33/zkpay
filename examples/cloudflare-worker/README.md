@@ -46,10 +46,13 @@ Those attempts are queryable through `GET /webhooks/deliveries?paymentId=...`
 or `GET /webhooks/deliveries?eventId=...`.
 Additional endpoints can be stored in `zkpay_webhook_endpoints`; rows with a
 null `merchant_id` are global, and merchant-scoped rows match
-`PaymentIntent.metadata.merchantId`.
+`PaymentIntent.metadata.merchantId`. Set `signing_secret` when a merchant
+endpoint should use its own webhook verification secret instead of the global
+Worker secret.
 The same D1 table powers `POST /webhooks/endpoints`,
-`GET /webhooks/endpoints`, and `PATCH /webhooks/endpoints/:id` for trusted
-merchant backend or dashboard use.
+`GET /webhooks/endpoints`, `PATCH /webhooks/endpoints/:id`, and
+`POST /webhooks/endpoints/:id/test` for trusted merchant backend or dashboard
+use.
 
 The Worker stays non-custodial. Merchant fulfillment should happen after the
 backend receives a successful verification response.

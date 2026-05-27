@@ -275,6 +275,7 @@ curl -X POST "https://api.example.com/webhooks/endpoints" \
     "merchantId": "merchant_acme",
     "url": "https://merchant.example/webhooks/zkpay",
     "eventTypes": ["payment.succeeded"],
+    "signingSecret": "whsec_merchant_endpoint_secret",
     "enabled": true
   }'
 ```
@@ -289,11 +290,16 @@ Response:
     "url": "https://merchant.example/webhooks/zkpay",
     "eventTypes": ["payment.succeeded"],
     "enabled": true,
+    "hasSigningSecret": true,
     "createdAt": "2026-05-27T05:30:00.000Z",
     "updatedAt": "2026-05-27T05:30:00.000Z"
   }
 }
 ```
+
+`signingSecret` is stored for delivery signing and is never returned. Management
+responses include `hasSigningSecret` and redact sensitive headers such as
+`authorization`, `token`, `secret`, and `x-api-key`.
 
 ### `GET /webhooks/endpoints`
 
@@ -315,6 +321,22 @@ curl -X PATCH "https://api.example.com/webhooks/endpoints/endpoint_acme_primary"
 Returns the updated endpoint, or `404` with `webhook_endpoint_not_found`.
 Production deployments should protect these management routes with merchant
 authentication before exposing them outside a trusted backend boundary.
+
+### `POST /webhooks/endpoints/:id/test`
+
+```bash
+curl -X POST "https://api.example.com/webhooks/endpoints/endpoint_acme_primary/test" \
+  -H "content-type: application/json" \
+  -d '{
+    "paymentId": "zkp_webhook_test",
+    "eventType": "payment.updated",
+    "data": { "reason": "manual-test" }
+  }'
+```
+
+The API sends one signed test event to the endpoint URL and returns
+`{ "endpoint": ..., "delivery": ... }`. The endpoint's own `signingSecret` is
+used when present; otherwise `webhookSecret` is used as a fallback.
 
 ### `GET /webhooks/deliveries`
 

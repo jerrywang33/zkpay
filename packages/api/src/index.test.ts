@@ -778,6 +778,223 @@ describe("@zkpay/api", () => {
     expect(listJson.endpoints).toEqual([patchJson.endpoint]);
   });
 
+  it("redacts webhook endpoint secrets in management responses", async () => {
+    const endpointStore = new InMemoryWebhookEndpointRegistry();
+    const app = createZkpayApi({
+      webhookEndpointStore: endpointStore,
+    });
+    const createResponse = await app.request("/webhooks/endpoints", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        id: "endpoint_secret",
+        merchantId: "merchant_secret",
+        url: "https://merchant.example/webhooks/secret",
+        headers: {
+          authorization: "Bearer merchant_secret",
+          "x-api-key": "api_secret",
+          "x-visible": "ok",
+        },
+        signingSecret: "endpoint_secret",
+      }),
+    });
+    const createJson = await createResponse.json();
+
+    expect(createResponse.status).toBe(201);
+    expect(createJson.endpoint).toMatchObject({
+      id: "endpoint_secret",
+      hasSigningSecret: true,
+      headers: {
+        authorization: "[redacted]",
+        "x-api-key": "[redacted]",
+        "x-visible": "ok",
+      },
+    });
+    expect(createJson.endpoint).not.toHaveProperty("signingSecret");
+
+    const listResponse = await app.request(
+      "/webhooks/endpoints?merchantId=merchant_secret",
+    );
+    const listJson = await listResponse.json();
+
+    expect(listResponse.status).toBe(200);
+    expect(listJson.endpoints[0]).toMatchObject({
+      id: "endpoint_secret",
+      hasSigningSecret: true,
+      headers: {
+        authorization: "[redacted]",
+        "x-api-key": "[redacted]",
+        "x-visible": "ok",
+      },
+    });
+    expect(listJson.endpoints[0]).not.toHaveProperty("signingSecret");
+  });
+
+  it("uses endpoint signing secrets for registry dispatch", async () => {
+    const webhookClient = new ZkpayClient({
+      webhookSecret: "global_secret",
+    });
+    const event = webhookClient.createWebhookEvent(
+      {
+        type: "payment.succeeded",
+        paymentId: "zkp_endpoint_secret",
+        data: {
+          source: "test",
+        },
+      },
+      {
+        id: "zkw_endpoint_secret",
+        now: "2026-05-25T01:01:00.000Z",
+      },
+    );
+    const globalSignature = webhookClient.signWebhookEvent(event);
+    let capturedInit: RequestInit | undefined;
+    const dispatcher = createHttpWebhookDispatcher({
+      endpointRegistry: new InMemoryWebhookEndpointRegistry([
+        {
+          id: "endpoint_signing",
+          url: "https://merchant.example/webhooks/signed",
+          signingSecret: "endpoint_secret",
+        },
+      ]),
+      retry: {
+        attempts: 1,
+      },
+      fetch: async (_url, init) => {
+        capturedInit = init;
+
+        return {
+          ok: true,
+          status: 202,
+        } as Response;
+      },
+    });
+
+    const results = await dispatcher.dispatch({
+      event,
+      signatureHeader: globalSignature,
+    });
+    const headers = capturedInit?.headers as Record<string, string>;
+
+    expect(results).toMatchObject([
+      {
+        ok: true,
+        url: "https://merchant.example/webhooks/signed",
+      },
+    ]);
+    expect(headers["zkpay-signature"]).not.toBe(globalSignature);
+    expect(
+      webhookClient.verifyWebhookSignature(
+        event,
+        headers["zkpay-signature"],
+        "endpoint_secret",
+      ),
+    ).toBe(true);
+    expect(
+      webhookClient.verifyWebhookSignature(
+        event,
+        headers["zkpay-signature"],
+        "global_secret",
+      ),
+    ).toBe(false);
+  });
+
+  it("tests a managed webhook endpoint delivery", async () => {
+    const webhookClient = new ZkpayClient();
+    const endpointStore = new InMemoryWebhookEndpointRegistry([
+      {
+        id: "endpoint_test",
+        url: "https://merchant.example/webhooks/test",
+        signingSecret: "endpoint_secret",
+      },
+    ]);
+    let capturedUrl: string | URL | Request | undefined;
+    let capturedInit: RequestInit | undefined;
+    const app = createZkpayApi({
+      webhookEndpointStore: endpointStore,
+      webhookTestFetch: async (url, init) => {
+        capturedUrl = url;
+        capturedInit = init;
+
+        return {
+          ok: true,
+          status: 202,
+        } as Response;
+      },
+    });
+    const response = await app.request("/webhooks/endpoints/endpoint_test/test", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        paymentId: "zkp_endpoint_test",
+        data: {
+          reason: "manual",
+        },
+      }),
+    });
+    const json = await response.json();
+    const headers = capturedInit?.headers as Record<string, string>;
+    const event = JSON.parse(String(capturedInit?.body));
+
+    expect(response.status).toBe(200);
+    expect(capturedUrl).toBe("https://merchant.example/webhooks/test");
+    expect(json).toMatchObject({
+      endpoint: {
+        id: "endpoint_test",
+        hasSigningSecret: true,
+      },
+      delivery: {
+        ok: true,
+        status: 202,
+        attemptCount: 1,
+      },
+    });
+    expect(json.endpoint).not.toHaveProperty("signingSecret");
+    expect(event).toMatchObject({
+      type: "payment.updated",
+      paymentId: "zkp_endpoint_test",
+      data: {
+        source: "webhooks.endpoints.test",
+        endpointId: "endpoint_test",
+        reason: "manual",
+      },
+    });
+    expect(
+      webhookClient.verifyWebhookSignature(
+        event,
+        headers["zkpay-signature"],
+        "endpoint_secret",
+      ),
+    ).toBe(true);
+  });
+
+  it("requires a signing secret for webhook endpoint test delivery", async () => {
+    const app = createZkpayApi({
+      webhookEndpointStore: new InMemoryWebhookEndpointRegistry([
+        {
+          id: "endpoint_unsigned",
+          url: "https://merchant.example/webhooks/unsigned",
+        },
+      ]),
+    });
+    const response = await app.request(
+      "/webhooks/endpoints/endpoint_unsigned/test",
+      {
+        method: "POST",
+      },
+    );
+    const json = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(json).toEqual({
+      error: "webhook_endpoint_signing_secret_missing",
+    });
+  });
+
   it("returns unavailable when webhook endpoint management is not configured", async () => {
     const app = createZkpayApi();
     const response = await app.request("/webhooks/endpoints");
@@ -1243,6 +1460,9 @@ describe("@zkpay/api", () => {
     expect(createD1WebhookEndpointRegistrySchema()).toContain(
       "event_types_json text",
     );
+    expect(createD1WebhookEndpointRegistrySchema()).toContain(
+      "signing_secret text",
+    );
     expect(() =>
       createD1WebhookEndpointRegistrySchema({ tableName: "bad-name" }),
     ).toThrow("Invalid SQL identifier");
@@ -1439,6 +1659,7 @@ class FakeD1PreparedStatement implements D1PreparedStatementLike {
       event_types_json: record.eventTypes
         ? JSON.stringify(record.eventTypes)
         : null,
+      signing_secret: record.signingSecret ?? null,
       enabled: record.enabled ? 1 : 0,
       created_at: record.createdAt,
       updated_at: record.updatedAt,
@@ -1462,9 +1683,13 @@ class FakeD1PreparedStatement implements D1PreparedStatementLike {
           this.values[4] === null || this.values[4] === undefined
             ? undefined
             : JSON.parse(String(this.values[4])),
-        enabled: this.values[5] === 1,
-        createdAt: String(this.values[6]),
-        updatedAt: String(this.values[7]),
+        signingSecret:
+          this.values[5] === null || this.values[5] === undefined
+            ? undefined
+            : String(this.values[5]),
+        enabled: this.values[6] === 1,
+        createdAt: String(this.values[7]),
+        updatedAt: String(this.values[8]),
       });
 
       return {
@@ -1473,7 +1698,7 @@ class FakeD1PreparedStatement implements D1PreparedStatementLike {
     }
 
     if (this.query.includes("update") && this.query.includes("headers_json")) {
-      const id = String(this.values[6]);
+      const id = String(this.values[7]);
       const index = this.database.webhookEndpoints.findIndex(
         (endpoint) => endpoint.id === id,
       );
@@ -1494,8 +1719,12 @@ class FakeD1PreparedStatement implements D1PreparedStatementLike {
             this.values[3] === null || this.values[3] === undefined
               ? undefined
               : JSON.parse(String(this.values[3])),
-          enabled: this.values[4] === 1,
-          updatedAt: String(this.values[5]),
+          signingSecret:
+            this.values[4] === null || this.values[4] === undefined
+              ? undefined
+              : String(this.values[4]),
+          enabled: this.values[5] === 1,
+          updatedAt: String(this.values[6]),
         };
       }
 
