@@ -90,9 +90,11 @@ import {
 
 `createHttpWebhookDispatcher` can be attached to the API for opt-in webhook
 delivery after successful verification. `createD1WebhookEndpointRegistry` lets
-the dispatcher load endpoints per merchant/event, while
-`createD1WebhookDeliveryStore` records delivery attempts and supports
-`GET /webhooks/deliveries` queries for reconciliation and operations.
+the dispatcher load endpoints per merchant/event and can also power
+`POST /webhooks/endpoints`, `GET /webhooks/endpoints`, and
+`PATCH /webhooks/endpoints/:id`. `createD1WebhookDeliveryStore` records delivery
+attempts and supports `GET /webhooks/deliveries` queries for reconciliation and
+operations.
 
 The package also exposes the CLI:
 

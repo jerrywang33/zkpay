@@ -182,15 +182,18 @@
   createZkpayApi,
 } from &quot;zkpay-sh/api&quot;;
 
+const webhookEndpointStore = createD1WebhookEndpointRegistry(env.DB);
+
 const app = createZkpayApi({
   webhookSecret: process.env.ZKPAY_WEBHOOK_SECRET,
+  webhookEndpointStore,
   webhookDispatcher: createHttpWebhookDispatcher({
     targets: [
       {
         url: &quot;https://merchant.example/webhooks/zkpay&quot;,
       },
     ],
-    endpointRegistry: createD1WebhookEndpointRegistry(env.DB),
+    endpointRegistry: webhookEndpointStore,
     retry: {
       attempts: 3,
       delayMs: 250,
@@ -217,6 +220,37 @@ const app = createZkpayApi({
 }</code></pre>
 <p>The delivery log store is best-effort. If it fails, verification responses still return the signed webhook event and delivery results with <code>webhookDeliveryLog</code> set to a failed log status.</p>
 <p><code>endpointRegistry</code> lets the dispatcher resolve targets per webhook event instead of hardcoding every URL in process config. The built-in memory registry and D1 registry support optional <code>merchantId</code> and <code>eventTypes</code> filters. For D1, store the merchant id in <code>PaymentIntent.metadata.merchantId</code>; global endpoints use a null <code>merchant_id</code> and receive matching events for every merchant.</p>
+<h3><code>POST /webhooks/endpoints</code></h3>
+<p>When <code>webhookEndpointStore</code> is configured, merchant systems can create managed webhook endpoints:</p>
+<pre><code class="language-bash">curl -X POST &quot;https://api.example.com/webhooks/endpoints&quot; \
+  -H &quot;content-type: application/json&quot; \
+  -d &#039;{
+    &quot;id&quot;: &quot;endpoint_acme_primary&quot;,
+    &quot;merchantId&quot;: &quot;merchant_acme&quot;,
+    &quot;url&quot;: &quot;https://merchant.example/webhooks/zkpay&quot;,
+    &quot;eventTypes&quot;: [&quot;payment.succeeded&quot;],
+    &quot;enabled&quot;: true
+  }&#039;</code></pre>
+<p>Response:</p>
+<pre><code class="language-json">{
+  &quot;endpoint&quot;: {
+    &quot;id&quot;: &quot;endpoint_acme_primary&quot;,
+    &quot;merchantId&quot;: &quot;merchant_acme&quot;,
+    &quot;url&quot;: &quot;https://merchant.example/webhooks/zkpay&quot;,
+    &quot;eventTypes&quot;: [&quot;payment.succeeded&quot;],
+    &quot;enabled&quot;: true,
+    &quot;createdAt&quot;: &quot;2026-05-27T05:30:00.000Z&quot;,
+    &quot;updatedAt&quot;: &quot;2026-05-27T05:30:00.000Z&quot;
+  }
+}</code></pre>
+<h3><code>GET /webhooks/endpoints</code></h3>
+<pre><code class="language-bash">curl &quot;https://api.example.com/webhooks/endpoints?merchantId=merchant_acme&amp;enabled=true&quot;</code></pre>
+<p>Returns <code>{ &quot;endpoints&quot;: [...] }</code>. <code>merchantId</code>, <code>enabled</code>, and <code>limit</code> are optional. <code>limit</code> defaults to <code>50</code> and is capped at <code>100</code>.</p>
+<h3><code>PATCH /webhooks/endpoints/:id</code></h3>
+<pre><code class="language-bash">curl -X PATCH &quot;https://api.example.com/webhooks/endpoints/endpoint_acme_primary&quot; \
+  -H &quot;content-type: application/json&quot; \
+  -d &#039;{ &quot;enabled&quot;: false }&#039;</code></pre>
+<p>Returns the updated endpoint, or <code>404</code> with <code>webhook_endpoint_not_found</code>. Production deployments should protect these management routes with merchant authentication before exposing them outside a trusted backend boundary.</p>
 <h3><code>GET /webhooks/deliveries</code></h3>
 <p>When the API is configured with a delivery store that supports listing, webhook attempts can be queried for reconciliation or operations screens:</p>
 <pre><code class="language-bash">curl &quot;https://api.example.com/webhooks/deliveries?paymentId=zkp_...&amp;limit=20&quot;
@@ -267,10 +301,13 @@ console.log(createD1SuiReplayStoreSchema());
 console.log(createD1WebhookEndpointRegistrySchema());
 console.log(createD1WebhookDeliveryStoreSchema());
 
+const webhookEndpointStore = createD1WebhookEndpointRegistry(env.DB);
+
 const app = createZkpayApi({
   replayStore: createD1SuiReplayStore(env.DB),
+  webhookEndpointStore,
   webhookDispatcher: createHttpWebhookDispatcher({
-    endpointRegistry: createD1WebhookEndpointRegistry(env.DB),
+    endpointRegistry: webhookEndpointStore,
   }),
   webhookDeliveryStore: createD1WebhookDeliveryStore(env.DB),
 });</code></pre>

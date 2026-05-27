@@ -661,6 +661,155 @@ describe("@zkpay/api", () => {
     });
   });
 
+  it("manages webhook endpoints with an in-memory store", async () => {
+    const endpointStore = new InMemoryWebhookEndpointRegistry();
+    const app = createZkpayApi({
+      webhookEndpointStore: endpointStore,
+    });
+    const createResponse = await app.request("/webhooks/endpoints", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        id: "endpoint_alpha",
+        merchantId: "merchant_a",
+        url: "https://merchant.example/webhooks/a",
+        headers: {
+          "x-endpoint": "alpha",
+        },
+        eventTypes: ["payment.succeeded"],
+      }),
+    });
+    const createJson = await createResponse.json();
+
+    expect(createResponse.status).toBe(201);
+    expect(createJson.endpoint).toMatchObject({
+      id: "endpoint_alpha",
+      merchantId: "merchant_a",
+      url: "https://merchant.example/webhooks/a",
+      enabled: true,
+      eventTypes: ["payment.succeeded"],
+    });
+
+    const listResponse = await app.request(
+      "/webhooks/endpoints?merchantId=merchant_a&enabled=true",
+    );
+    const listJson = await listResponse.json();
+
+    expect(listResponse.status).toBe(200);
+    expect(listJson.endpoints).toEqual([createJson.endpoint]);
+
+    const patchResponse = await app.request(
+      "/webhooks/endpoints/endpoint_alpha",
+      {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          enabled: false,
+          headers: null,
+        }),
+      },
+    );
+    const patchJson = await patchResponse.json();
+
+    expect(patchResponse.status).toBe(200);
+    expect(patchJson.endpoint).toMatchObject({
+      id: "endpoint_alpha",
+      enabled: false,
+    });
+    expect(patchJson.endpoint).not.toHaveProperty("headers");
+  });
+
+  it("manages webhook endpoints with a D1 store", async () => {
+    const database = new FakeD1Database();
+    const endpointStore = createD1WebhookEndpointRegistry(database);
+    const app = createZkpayApi({
+      webhookEndpointStore: endpointStore,
+    });
+    const createResponse = await app.request("/webhooks/endpoints", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        id: "endpoint_d1",
+        merchantId: "merchant_d1",
+        url: "https://merchant.example/webhooks/d1",
+        enabled: true,
+      }),
+    });
+    const createJson = await createResponse.json();
+
+    expect(createResponse.status).toBe(201);
+    expect(createJson.endpoint).toMatchObject({
+      id: "endpoint_d1",
+      merchantId: "merchant_d1",
+      enabled: true,
+    });
+
+    const patchResponse = await app.request("/webhooks/endpoints/endpoint_d1", {
+      method: "PATCH",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        url: "https://merchant.example/webhooks/d1-v2",
+        eventTypes: ["payment.succeeded", "payment.updated"],
+      }),
+    });
+    const patchJson = await patchResponse.json();
+
+    expect(patchResponse.status).toBe(200);
+    expect(patchJson.endpoint).toMatchObject({
+      id: "endpoint_d1",
+      url: "https://merchant.example/webhooks/d1-v2",
+      eventTypes: ["payment.succeeded", "payment.updated"],
+    });
+
+    const listResponse = await app.request(
+      "/webhooks/endpoints?merchantId=merchant_d1&limit=5",
+    );
+    const listJson = await listResponse.json();
+
+    expect(listResponse.status).toBe(200);
+    expect(listJson.endpoints).toEqual([patchJson.endpoint]);
+  });
+
+  it("returns unavailable when webhook endpoint management is not configured", async () => {
+    const app = createZkpayApi();
+    const response = await app.request("/webhooks/endpoints");
+    const json = await response.json();
+
+    expect(response.status).toBe(501);
+    expect(json).toEqual({
+      error: "webhook_endpoint_store_unavailable",
+    });
+  });
+
+  it("returns not found for missing webhook endpoint patches", async () => {
+    const app = createZkpayApi({
+      webhookEndpointStore: new InMemoryWebhookEndpointRegistry(),
+    });
+    const response = await app.request("/webhooks/endpoints/missing_endpoint", {
+      method: "PATCH",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        enabled: false,
+      }),
+    });
+    const json = await response.json();
+
+    expect(response.status).toBe(404);
+    expect(json).toEqual({
+      error: "webhook_endpoint_not_found",
+    });
+  });
+
   it("can require signed payment intents at the HTTP boundary", async () => {
     const app = createZkpayApi({
       signingSecret: "merchant_secret",
@@ -1148,6 +1297,14 @@ class FakeD1PreparedStatement implements D1PreparedStatementLike {
   }
 
   async first<T = unknown>(): Promise<T | null> {
+    if (this.query.includes("headers_json")) {
+      const endpoint = this.database.webhookEndpoints.find(
+        (item) => item.id === String(this.values[0]),
+      );
+
+      return endpoint ? (this.toD1WebhookEndpointRow(endpoint) as T) : null;
+    }
+
     const value = String(this.values[0]);
     const record = this.query.includes("where tx_digest")
       ? this.database.records.find((item) => item.txDigest === value)
@@ -1220,23 +1377,59 @@ class FakeD1PreparedStatement implements D1PreparedStatementLike {
   }
 
   private queryWebhookEndpoints(): unknown[] {
-    const merchantId = this.values[0] ? String(this.values[0]) : undefined;
-    const records = this.database.webhookEndpoints
-      .filter((endpoint) => endpoint.enabled !== false)
-      .filter((endpoint) =>
-        merchantId
-          ? !endpoint.merchantId || endpoint.merchantId === merchantId
-          : !endpoint.merchantId,
-      )
-      .sort((left, right) => {
-        const leftTime = left.createdAt ?? "";
-        const rightTime = right.createdAt ?? "";
-        const timeOrder = leftTime.localeCompare(rightTime);
+    let records = [...this.database.webhookEndpoints];
+    let limit: number | undefined;
 
-        return timeOrder === 0 ? left.id.localeCompare(right.id) : timeOrder;
-      });
+    if (this.query.includes("enabled = 1 and (merchant_id is null")) {
+      const merchantId = String(this.values[0]);
+      records = records
+        .filter((endpoint) => endpoint.enabled)
+        .filter(
+          (endpoint) =>
+            !endpoint.merchantId || endpoint.merchantId === merchantId,
+        );
+    } else if (this.query.includes("enabled = 1 and merchant_id is null")) {
+      records = records
+        .filter((endpoint) => endpoint.enabled)
+        .filter((endpoint) => !endpoint.merchantId);
+    } else if (this.query.includes("where merchant_id = ? and enabled = ?")) {
+      const merchantId = String(this.values[0]);
+      const enabled = this.values[1] === 1;
+      limit = Number(this.values[2]);
+      records = records
+        .filter((endpoint) => endpoint.merchantId === merchantId)
+        .filter((endpoint) => endpoint.enabled === enabled);
+    } else if (this.query.includes("where merchant_id = ?")) {
+      const merchantId = String(this.values[0]);
+      limit = Number(this.values[1]);
+      records = records.filter((endpoint) => endpoint.merchantId === merchantId);
+    } else if (this.query.includes("where enabled = ?")) {
+      const enabled = this.values[0] === 1;
+      limit = Number(this.values[1]);
+      records = records.filter((endpoint) => endpoint.enabled === enabled);
+    } else {
+      limit = Number(this.values[0]);
+    }
 
-    return records.map((record) => ({
+    records = records.sort((left, right) => {
+      const leftTime = left.createdAt ?? "";
+      const rightTime = right.createdAt ?? "";
+      const timeOrder = this.query.includes("order by created_at desc")
+        ? rightTime.localeCompare(leftTime)
+        : leftTime.localeCompare(rightTime);
+
+      return timeOrder === 0 ? left.id.localeCompare(right.id) : timeOrder;
+    });
+
+    if (Number.isFinite(limit)) {
+      records = records.slice(0, limit);
+    }
+
+    return records.map((record) => this.toD1WebhookEndpointRow(record));
+  }
+
+  private toD1WebhookEndpointRow(record: WebhookEndpoint): unknown {
+    return {
       id: record.id,
       merchant_id: record.merchantId ?? null,
       url: record.url,
@@ -1246,13 +1439,71 @@ class FakeD1PreparedStatement implements D1PreparedStatementLike {
       event_types_json: record.eventTypes
         ? JSON.stringify(record.eventTypes)
         : null,
-      enabled: record.enabled === false ? 0 : 1,
-      created_at: record.createdAt ?? "2026-05-25T01:00:00.000Z",
-      updated_at: record.updatedAt ?? "2026-05-25T01:00:00.000Z",
-    }));
+      enabled: record.enabled ? 1 : 0,
+      created_at: record.createdAt,
+      updated_at: record.updatedAt,
+    };
   }
 
   async run(): Promise<unknown> {
+    if (this.query.includes("insert into") && this.query.includes("headers_json")) {
+      this.database.webhookEndpoints.push({
+        id: String(this.values[0]),
+        merchantId:
+          this.values[1] === null || this.values[1] === undefined
+            ? undefined
+            : String(this.values[1]),
+        url: String(this.values[2]),
+        headers:
+          this.values[3] === null || this.values[3] === undefined
+            ? undefined
+            : JSON.parse(String(this.values[3])),
+        eventTypes:
+          this.values[4] === null || this.values[4] === undefined
+            ? undefined
+            : JSON.parse(String(this.values[4])),
+        enabled: this.values[5] === 1,
+        createdAt: String(this.values[6]),
+        updatedAt: String(this.values[7]),
+      });
+
+      return {
+        success: true,
+      };
+    }
+
+    if (this.query.includes("update") && this.query.includes("headers_json")) {
+      const id = String(this.values[6]);
+      const index = this.database.webhookEndpoints.findIndex(
+        (endpoint) => endpoint.id === id,
+      );
+
+      if (index >= 0) {
+        this.database.webhookEndpoints[index] = {
+          ...this.database.webhookEndpoints[index],
+          merchantId:
+            this.values[0] === null || this.values[0] === undefined
+              ? undefined
+              : String(this.values[0]),
+          url: String(this.values[1]),
+          headers:
+            this.values[2] === null || this.values[2] === undefined
+              ? undefined
+              : JSON.parse(String(this.values[2])),
+          eventTypes:
+            this.values[3] === null || this.values[3] === undefined
+              ? undefined
+              : JSON.parse(String(this.values[3])),
+          enabled: this.values[4] === 1,
+          updatedAt: String(this.values[5]),
+        };
+      }
+
+      return {
+        success: true,
+      };
+    }
+
     if (this.values.length === 9) {
       this.database.webhookDeliveryRecords.push({
         eventId: String(this.values[0]),

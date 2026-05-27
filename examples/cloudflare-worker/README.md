@@ -12,12 +12,14 @@ import {
   createZkpayApi,
 } from "zkpay-sh/api";
 
+const webhookEndpointStore = createD1WebhookEndpointRegistry(env.ZKPAY_REPLAY);
+
 const webhookDispatcher = env.ZKPAY_WEBHOOK_SECRET
   ? createHttpWebhookDispatcher({
       targets: env.ZKPAY_WEBHOOK_URL
         ? [{ url: env.ZKPAY_WEBHOOK_URL }]
         : [],
-      endpointRegistry: createD1WebhookEndpointRegistry(env.ZKPAY_REPLAY),
+      endpointRegistry: webhookEndpointStore,
     })
   : undefined;
 
@@ -25,6 +27,7 @@ const app = createZkpayApi({
   replayStore: createD1SuiReplayStore(env.ZKPAY_REPLAY),
   webhookSecret: env.ZKPAY_WEBHOOK_SECRET,
   webhookDispatcher,
+  webhookEndpointStore,
   webhookDeliveryStore: webhookDispatcher
     ? createD1WebhookDeliveryStore(env.ZKPAY_REPLAY)
     : undefined,
@@ -44,6 +47,9 @@ or `GET /webhooks/deliveries?eventId=...`.
 Additional endpoints can be stored in `zkpay_webhook_endpoints`; rows with a
 null `merchant_id` are global, and merchant-scoped rows match
 `PaymentIntent.metadata.merchantId`.
+The same D1 table powers `POST /webhooks/endpoints`,
+`GET /webhooks/endpoints`, and `PATCH /webhooks/endpoints/:id` for trusted
+merchant backend or dashboard use.
 
 The Worker stays non-custodial. Merchant fulfillment should happen after the
 backend receives a successful verification response.

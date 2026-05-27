@@ -79,6 +79,70 @@ const webhookDeliveryListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional(),
 });
 
+const webhookEventTypeSchema = z.enum([
+  "payment.succeeded",
+  "payment.failed",
+  "payment.updated",
+]);
+
+const webhookEndpointIdSchema = z
+  .string()
+  .min(1)
+  .max(120)
+  .regex(/^[a-zA-Z0-9_-]+$/, "Expected a URL-safe webhook endpoint id");
+
+const webhookEndpointHeadersSchema = z
+  .record(z.string().min(1).max(128), z.string().max(1024))
+  .optional();
+
+const webhookEndpointEventTypesSchema = z
+  .array(webhookEventTypeSchema)
+  .min(1)
+  .max(8)
+  .optional();
+
+const webhookEndpointCreateSchema = z.object({
+  id: webhookEndpointIdSchema.optional(),
+  merchantId: z.string().min(1).max(120).optional(),
+  url: z.string().url().max(2048),
+  headers: webhookEndpointHeadersSchema,
+  eventTypes: webhookEndpointEventTypesSchema,
+  enabled: z.boolean().optional(),
+});
+
+const webhookEndpointPatchSchema = z
+  .object({
+    merchantId: z.string().min(1).max(120).nullable().optional(),
+    url: z.string().url().max(2048).optional(),
+    headers: z
+      .record(z.string().min(1).max(128), z.string().max(1024))
+      .nullable()
+      .optional(),
+    eventTypes: z
+      .array(webhookEventTypeSchema)
+      .min(1)
+      .max(8)
+      .nullable()
+      .optional(),
+    enabled: z.boolean().optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: "At least one endpoint field is required",
+  });
+
+const optionalBooleanQuerySchema = z
+  .union([
+    z.boolean(),
+    z.enum(["true", "false"]).transform((value) => value === "true"),
+  ])
+  .optional();
+
+const webhookEndpointListQuerySchema = z.object({
+  merchantId: z.string().min(1).max(120).optional(),
+  enabled: optionalBooleanQuerySchema,
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+});
+
 export interface SuiVerifier {
   verify(
     input: SuiSettlementVerificationInput,
@@ -296,15 +360,53 @@ export interface WebhookEndpoint extends HttpWebhookTarget {
   id: string;
   merchantId?: string;
   eventTypes?: readonly WebhookEvent["type"][];
-  enabled?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface WebhookEndpointRegistry {
   listTargets(
     webhook: SignedWebhookEvent,
   ): Promise<readonly HttpWebhookTarget[]> | readonly HttpWebhookTarget[];
+}
+
+export interface WebhookEndpointCreateInput {
+  id?: string;
+  merchantId?: string;
+  url: string;
+  headers?: Record<string, string>;
+  eventTypes?: readonly WebhookEvent["type"][];
+  enabled?: boolean;
+  now?: Date | string;
+}
+
+export interface WebhookEndpointPatchInput {
+  merchantId?: string | null;
+  url?: string;
+  headers?: Record<string, string> | null;
+  eventTypes?: readonly WebhookEvent["type"][] | null;
+  enabled?: boolean;
+  now?: Date | string;
+}
+
+export interface WebhookEndpointListInput {
+  merchantId?: string;
+  enabled?: boolean;
+  limit?: number;
+}
+
+export interface WebhookEndpointStore extends WebhookEndpointRegistry {
+  create(
+    input: WebhookEndpointCreateInput,
+  ): Promise<WebhookEndpoint> | WebhookEndpoint;
+  list(
+    input?: WebhookEndpointListInput,
+  ): Promise<WebhookEndpoint[]> | WebhookEndpoint[];
+  patch(
+    id: string,
+    input: WebhookEndpointPatchInput,
+  ): Promise<WebhookEndpoint | null> | WebhookEndpoint | null;
 }
 
 export class InMemoryWebhookDeliveryStore implements WebhookDeliveryStore {
@@ -331,15 +433,53 @@ export class InMemoryWebhookDeliveryStore implements WebhookDeliveryStore {
   }
 }
 
-export class InMemoryWebhookEndpointRegistry implements WebhookEndpointRegistry {
+export class InMemoryWebhookEndpointRegistry implements WebhookEndpointStore {
   readonly endpoints: WebhookEndpoint[] = [];
 
-  constructor(endpoints: readonly WebhookEndpoint[] = []) {
-    this.endpoints.push(...endpoints);
+  constructor(endpoints: readonly WebhookEndpointCreateInput[] = []) {
+    this.endpoints.push(
+      ...endpoints.map((endpoint) => createWebhookEndpoint(endpoint)),
+    );
   }
 
-  add(endpoint: WebhookEndpoint): void {
+  add(endpoint: WebhookEndpointCreateInput): void {
+    this.endpoints.push(createWebhookEndpoint(endpoint));
+  }
+
+  create(input: WebhookEndpointCreateInput): WebhookEndpoint {
+    const endpoint = createWebhookEndpoint(input);
+
     this.endpoints.push(endpoint);
+
+    return endpoint;
+  }
+
+  list(input: WebhookEndpointListInput = {}): WebhookEndpoint[] {
+    const limit = normalizeWebhookEndpointLimit(input.limit);
+
+    return this.endpoints
+      .filter((endpoint) =>
+        input.merchantId ? endpoint.merchantId === input.merchantId : true,
+      )
+      .filter((endpoint) =>
+        input.enabled === undefined ? true : endpoint.enabled === input.enabled,
+      )
+      .sort((left, right) =>
+        right.createdAt.localeCompare(left.createdAt) ||
+        right.id.localeCompare(left.id),
+      )
+      .slice(0, limit);
+  }
+
+  patch(id: string, input: WebhookEndpointPatchInput): WebhookEndpoint | null {
+    const index = this.endpoints.findIndex((endpoint) => endpoint.id === id);
+
+    if (index < 0) return null;
+
+    const endpoint = patchWebhookEndpoint(this.endpoints[index], input);
+    this.endpoints[index] = endpoint;
+
+    return endpoint;
   }
 
   listTargets(webhook: SignedWebhookEvent): readonly HttpWebhookTarget[] {
@@ -448,10 +588,97 @@ export function createD1WebhookDeliveryStoreSchema(
 export function createD1WebhookEndpointRegistry(
   database: D1DatabaseLike,
   options: WebhookEndpointRegistryOptions = {},
-): WebhookEndpointRegistry {
+): WebhookEndpointStore {
   const tableName = sqlIdentifier(options.tableName ?? "zkpay_webhook_endpoints");
 
   return {
+    async create(input) {
+      const endpoint = createWebhookEndpoint(input);
+
+      await database
+        .prepare(
+          `insert into ${tableName} (id, merchant_id, url, headers_json, event_types_json, enabled, created_at, updated_at) values (?, ?, ?, ?, ?, ?, ?, ?)`,
+        )
+        .bind(
+          endpoint.id,
+          endpoint.merchantId ?? null,
+          endpoint.url,
+          serializeOptionalJson(endpoint.headers),
+          serializeOptionalJson(endpoint.eventTypes),
+          endpoint.enabled ? 1 : 0,
+          endpoint.createdAt,
+          endpoint.updatedAt,
+        )
+        .run();
+
+      return endpoint;
+    },
+    async list(input = {}) {
+      const columns =
+        "id, merchant_id, url, headers_json, event_types_json, enabled, created_at, updated_at";
+      const limit = normalizeWebhookEndpointLimit(input.limit);
+      let result: D1ResultLike<D1WebhookEndpointRow> | D1WebhookEndpointRow[];
+
+      if (input.merchantId && input.enabled !== undefined) {
+        result = await allD1<D1WebhookEndpointRow>(
+          database
+            .prepare(
+              `select ${columns} from ${tableName} where merchant_id = ? and enabled = ? order by created_at desc, id desc limit ?`,
+            )
+            .bind(input.merchantId, input.enabled ? 1 : 0, limit),
+        );
+      } else if (input.merchantId) {
+        result = await allD1<D1WebhookEndpointRow>(
+          database
+            .prepare(
+              `select ${columns} from ${tableName} where merchant_id = ? order by created_at desc, id desc limit ?`,
+            )
+            .bind(input.merchantId, limit),
+        );
+      } else if (input.enabled !== undefined) {
+        result = await allD1<D1WebhookEndpointRow>(
+          database
+            .prepare(
+              `select ${columns} from ${tableName} where enabled = ? order by created_at desc, id desc limit ?`,
+            )
+            .bind(input.enabled ? 1 : 0, limit),
+        );
+      } else {
+        result = await allD1<D1WebhookEndpointRow>(
+          database
+            .prepare(
+              `select ${columns} from ${tableName} order by created_at desc, id desc limit ?`,
+            )
+            .bind(limit),
+        );
+      }
+
+      return d1Rows(result).map(mapD1WebhookEndpoint);
+    },
+    async patch(id, input) {
+      const existing = await findD1WebhookEndpoint(database, tableName, id);
+
+      if (!existing) return null;
+
+      const endpoint = patchWebhookEndpoint(existing, input);
+
+      await database
+        .prepare(
+          `update ${tableName} set merchant_id = ?, url = ?, headers_json = ?, event_types_json = ?, enabled = ?, updated_at = ? where id = ?`,
+        )
+        .bind(
+          endpoint.merchantId ?? null,
+          endpoint.url,
+          serializeOptionalJson(endpoint.headers),
+          serializeOptionalJson(endpoint.eventTypes),
+          endpoint.enabled ? 1 : 0,
+          endpoint.updatedAt,
+          endpoint.id,
+        )
+        .run();
+
+      return endpoint;
+    },
     async listTargets(webhook) {
       const merchantId = webhook.event.intent?.metadata.merchantId;
       const columns =
@@ -510,6 +737,7 @@ export interface ZkpayApiOptions extends ZkpayClientOptions {
   requireIntentSignature?: boolean;
   webhookDispatcher?: WebhookDispatcher;
   webhookDeliveryStore?: WebhookDeliveryStore | false;
+  webhookEndpointStore?: WebhookEndpointStore | false;
 }
 
 export interface SignedWebhookEvent {
@@ -646,6 +874,153 @@ export function createZkpayApi(options: ZkpayApiOptions = {}): Hono {
       return context.json(
         {
           error: "webhook_delivery_query_failed",
+          details: error instanceof Error ? error.message : String(error),
+        },
+        502,
+      );
+    }
+  });
+
+  app.get("/webhooks/endpoints", async (context) => {
+    const store = options.webhookEndpointStore;
+
+    if (!store) {
+      return context.json(
+        {
+          error: "webhook_endpoint_store_unavailable",
+        },
+        501,
+      );
+    }
+
+    const query = webhookEndpointListQuerySchema.safeParse(context.req.query());
+
+    if (!query.success) {
+      return context.json(
+        {
+          error: "invalid_webhook_endpoint_query",
+          details: query.error.issues,
+        },
+        400,
+      );
+    }
+
+    try {
+      return context.json({
+        endpoints: await store.list(query.data),
+      });
+    } catch (error) {
+      return context.json(
+        {
+          error: "webhook_endpoint_query_failed",
+          details: error instanceof Error ? error.message : String(error),
+        },
+        502,
+      );
+    }
+  });
+
+  app.post("/webhooks/endpoints", async (context) => {
+    const store = options.webhookEndpointStore;
+
+    if (!store) {
+      return context.json(
+        {
+          error: "webhook_endpoint_store_unavailable",
+        },
+        501,
+      );
+    }
+
+    const payload = webhookEndpointCreateSchema.safeParse(
+      await context.req.json(),
+    );
+
+    if (!payload.success) {
+      return context.json(
+        {
+          error: "invalid_webhook_endpoint_request",
+          details: payload.error.issues,
+        },
+        400,
+      );
+    }
+
+    try {
+      return context.json(
+        {
+          endpoint: await store.create(payload.data),
+        },
+        201,
+      );
+    } catch (error) {
+      return context.json(
+        {
+          error: "webhook_endpoint_create_failed",
+          details: error instanceof Error ? error.message : String(error),
+        },
+        502,
+      );
+    }
+  });
+
+  app.patch("/webhooks/endpoints/:id", async (context) => {
+    const store = options.webhookEndpointStore;
+
+    if (!store) {
+      return context.json(
+        {
+          error: "webhook_endpoint_store_unavailable",
+        },
+        501,
+      );
+    }
+
+    const id = webhookEndpointIdSchema.safeParse(context.req.param("id"));
+
+    if (!id.success) {
+      return context.json(
+        {
+          error: "invalid_webhook_endpoint_id",
+          details: id.error.issues,
+        },
+        400,
+      );
+    }
+
+    const payload = webhookEndpointPatchSchema.safeParse(
+      await context.req.json(),
+    );
+
+    if (!payload.success) {
+      return context.json(
+        {
+          error: "invalid_webhook_endpoint_patch",
+          details: payload.error.issues,
+        },
+        400,
+      );
+    }
+
+    try {
+      const endpoint = await store.patch(id.data, payload.data);
+
+      if (!endpoint) {
+        return context.json(
+          {
+            error: "webhook_endpoint_not_found",
+          },
+          404,
+        );
+      }
+
+      return context.json({
+        endpoint,
+      });
+    } catch (error) {
+      return context.json(
+        {
+          error: "webhook_endpoint_patch_failed",
           details: error instanceof Error ? error.message : String(error),
         },
         502,
@@ -1079,6 +1454,21 @@ async function findD1ReplayRecord(
   return row ? replayRecordFromD1Row(row) : null;
 }
 
+async function findD1WebhookEndpoint(
+  database: D1DatabaseLike,
+  tableName: string,
+  id: string,
+): Promise<WebhookEndpoint | null> {
+  const row = await database
+    .prepare(
+      `select id, merchant_id, url, headers_json, event_types_json, enabled, created_at, updated_at from ${tableName} where id = ? limit 1`,
+    )
+    .bind(id)
+    .first<D1WebhookEndpointRow>();
+
+  return row ? mapD1WebhookEndpoint(row) : null;
+}
+
 interface D1SuiReplayRow {
   payment_id: string;
   tx_digest: string;
@@ -1126,6 +1516,62 @@ function replayRecordFromD1Row(row: D1SuiReplayRow): SuiReplayRecord {
   };
 }
 
+function createWebhookEndpoint(
+  input: WebhookEndpointCreateInput,
+): WebhookEndpoint {
+  const timestamp = toTimestamp(input.now);
+
+  return normalizeWebhookEndpoint({
+    id: input.id ?? createWebhookEndpointId(),
+    merchantId: input.merchantId,
+    url: input.url,
+    headers: input.headers,
+    eventTypes: input.eventTypes,
+    enabled: input.enabled ?? true,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  });
+}
+
+function patchWebhookEndpoint(
+  endpoint: WebhookEndpoint,
+  input: WebhookEndpointPatchInput,
+): WebhookEndpoint {
+  return normalizeWebhookEndpoint({
+    ...endpoint,
+    merchantId:
+      input.merchantId === undefined
+        ? endpoint.merchantId
+        : input.merchantId ?? undefined,
+    url: input.url ?? endpoint.url,
+    headers:
+      input.headers === undefined
+        ? endpoint.headers
+        : input.headers ?? undefined,
+    eventTypes:
+      input.eventTypes === undefined
+        ? endpoint.eventTypes
+        : input.eventTypes ?? undefined,
+    enabled: input.enabled ?? endpoint.enabled,
+    updatedAt: toTimestamp(input.now),
+  });
+}
+
+function normalizeWebhookEndpoint(endpoint: WebhookEndpoint): WebhookEndpoint {
+  return {
+    id: endpoint.id,
+    merchantId: endpoint.merchantId,
+    url: endpoint.url.trim(),
+    headers: endpoint.headers,
+    eventTypes: endpoint.eventTypes
+      ? [...new Set(endpoint.eventTypes)]
+      : undefined,
+    enabled: endpoint.enabled,
+    createdAt: endpoint.createdAt,
+    updatedAt: endpoint.updatedAt,
+  };
+}
+
 function mapD1WebhookEndpoint(row: D1WebhookEndpointRow): WebhookEndpoint {
   return {
     id: row.id,
@@ -1137,6 +1583,14 @@ function mapD1WebhookEndpoint(row: D1WebhookEndpointRow): WebhookEndpoint {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+function createWebhookEndpointId(): string {
+  const uuid = globalThis.crypto?.randomUUID?.();
+
+  if (uuid) return `zwe_${uuid.replaceAll("-", "").slice(0, 24)}`;
+
+  return `zwe_${Math.random().toString(36).slice(2, 14)}`;
 }
 
 function matchesWebhookEndpoint(
@@ -1224,6 +1678,10 @@ function parseD1WebhookEventTypes(
   return parsed;
 }
 
+function serializeOptionalJson(value: unknown): string | null {
+  return value === undefined ? null : JSON.stringify(value);
+}
+
 function d1Rows<T>(result: D1ResultLike<T> | T[]): T[] {
   return Array.isArray(result) ? result : result.results;
 }
@@ -1242,6 +1700,18 @@ function normalizeWebhookDeliveryLimit(limit: number | undefined): number {
   if (limit === undefined || !Number.isFinite(limit)) return 50;
 
   return Math.min(Math.max(Math.trunc(limit), 1), 100);
+}
+
+function normalizeWebhookEndpointLimit(limit: number | undefined): number {
+  if (limit === undefined || !Number.isFinite(limit)) return 50;
+
+  return Math.min(Math.max(Math.trunc(limit), 1), 100);
+}
+
+function toTimestamp(value: Date | string | undefined): string {
+  return value instanceof Date
+    ? value.toISOString()
+    : value ?? new Date().toISOString();
 }
 
 function sqlIdentifier(value: string): string {

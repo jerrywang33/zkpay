@@ -38,15 +38,16 @@ available. Public installs should use `zkpay-sh/api`.
 The current alpha version is:
 
 ```txt
-0.2.0-alpha.18
+0.2.0-alpha.19
 ```
 
 It is published under the `next` dist-tag. Developer docs should use
 `zkpay-sh@next`; `latest` is not the integration target while the package is in
 alpha.
 
-`0.2.0-alpha.18` adds in-memory and D1 webhook endpoint registries for
-merchant/event-scoped HTTP delivery. `0.2.0-alpha.17` added
+`0.2.0-alpha.19` adds webhook endpoint management routes backed by the in-memory
+and D1 endpoint stores. `0.2.0-alpha.18` added in-memory and D1 webhook endpoint
+registries for merchant/event-scoped HTTP delivery. `0.2.0-alpha.17` added
 `GET /webhooks/deliveries` plus list support for the in-memory and D1 webhook
 delivery stores. `0.2.0-alpha.16` added in-memory and D1 webhook delivery log
 stores plus a Cloudflare Worker example schema update. `0.2.0-alpha.15` added

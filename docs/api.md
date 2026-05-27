@@ -210,15 +210,18 @@ import {
   createZkpayApi,
 } from "zkpay-sh/api";
 
+const webhookEndpointStore = createD1WebhookEndpointRegistry(env.DB);
+
 const app = createZkpayApi({
   webhookSecret: process.env.ZKPAY_WEBHOOK_SECRET,
+  webhookEndpointStore,
   webhookDispatcher: createHttpWebhookDispatcher({
     targets: [
       {
         url: "https://merchant.example/webhooks/zkpay",
       },
     ],
-    endpointRegistry: createD1WebhookEndpointRegistry(env.DB),
+    endpointRegistry: webhookEndpointStore,
     retry: {
       attempts: 3,
       delayMs: 250,
@@ -258,6 +261,60 @@ of hardcoding every URL in process config. The built-in memory registry and D1
 registry support optional `merchantId` and `eventTypes` filters. For D1, store
 the merchant id in `PaymentIntent.metadata.merchantId`; global endpoints use a
 null `merchant_id` and receive matching events for every merchant.
+
+### `POST /webhooks/endpoints`
+
+When `webhookEndpointStore` is configured, merchant systems can create managed
+webhook endpoints:
+
+```bash
+curl -X POST "https://api.example.com/webhooks/endpoints" \
+  -H "content-type: application/json" \
+  -d '{
+    "id": "endpoint_acme_primary",
+    "merchantId": "merchant_acme",
+    "url": "https://merchant.example/webhooks/zkpay",
+    "eventTypes": ["payment.succeeded"],
+    "enabled": true
+  }'
+```
+
+Response:
+
+```json
+{
+  "endpoint": {
+    "id": "endpoint_acme_primary",
+    "merchantId": "merchant_acme",
+    "url": "https://merchant.example/webhooks/zkpay",
+    "eventTypes": ["payment.succeeded"],
+    "enabled": true,
+    "createdAt": "2026-05-27T05:30:00.000Z",
+    "updatedAt": "2026-05-27T05:30:00.000Z"
+  }
+}
+```
+
+### `GET /webhooks/endpoints`
+
+```bash
+curl "https://api.example.com/webhooks/endpoints?merchantId=merchant_acme&enabled=true"
+```
+
+Returns `{ "endpoints": [...] }`. `merchantId`, `enabled`, and `limit` are
+optional. `limit` defaults to `50` and is capped at `100`.
+
+### `PATCH /webhooks/endpoints/:id`
+
+```bash
+curl -X PATCH "https://api.example.com/webhooks/endpoints/endpoint_acme_primary" \
+  -H "content-type: application/json" \
+  -d '{ "enabled": false }'
+```
+
+Returns the updated endpoint, or `404` with `webhook_endpoint_not_found`.
+Production deployments should protect these management routes with merchant
+authentication before exposing them outside a trusted backend boundary.
 
 ### `GET /webhooks/deliveries`
 
@@ -337,10 +394,13 @@ console.log(createD1SuiReplayStoreSchema());
 console.log(createD1WebhookEndpointRegistrySchema());
 console.log(createD1WebhookDeliveryStoreSchema());
 
+const webhookEndpointStore = createD1WebhookEndpointRegistry(env.DB);
+
 const app = createZkpayApi({
   replayStore: createD1SuiReplayStore(env.DB),
+  webhookEndpointStore,
   webhookDispatcher: createHttpWebhookDispatcher({
-    endpointRegistry: createD1WebhookEndpointRegistry(env.DB),
+    endpointRegistry: webhookEndpointStore,
   }),
   webhookDeliveryStore: createD1WebhookDeliveryStore(env.DB),
 });

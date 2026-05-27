@@ -136,15 +136,18 @@ import {
   createZkpayApi,
 } from "zkpay-sh/api";
 
+const webhookEndpointStore = createD1WebhookEndpointRegistry(env.DB);
+
 const app = createZkpayApi({
   webhookSecret: process.env.ZKPAY_WEBHOOK_SECRET,
+  webhookEndpointStore,
   webhookDispatcher: createHttpWebhookDispatcher({
     targets: [
       {
         url: "https://merchant.example/webhooks/zkpay",
       },
     ],
-    endpointRegistry: createD1WebhookEndpointRegistry(env.DB),
+    endpointRegistry: webhookEndpointStore,
   }),
   webhookDeliveryStore: createD1WebhookDeliveryStore(env.DB),
 });
@@ -160,6 +163,10 @@ Endpoint registries are useful once a merchant can manage webhook endpoints
 from a dashboard. The built-in D1 registry reads `zkpay_webhook_endpoints`,
 selects enabled global endpoints plus endpoints whose `merchant_id` matches
 `intent.metadata.merchantId`, then filters by `event_types_json` when present.
+When `webhookEndpointStore` is configured, the API also exposes
+`POST /webhooks/endpoints`, `GET /webhooks/endpoints`, and
+`PATCH /webhooks/endpoints/:id` for merchant endpoint management. These routes
+are alpha primitives and should sit behind merchant authentication in production.
 
 Delivery logs can be queried from the same API when the configured store
 supports listing:

@@ -38,15 +38,18 @@ import {
   createZkpayApi,
 } from "zkpay-sh/api";
 
+const webhookEndpointStore = createD1WebhookEndpointRegistry(env.DB);
+
 const app = createZkpayApi({
   webhookSecret: process.env.ZKPAY_WEBHOOK_SECRET,
+  webhookEndpointStore,
   webhookDispatcher: createHttpWebhookDispatcher({
     targets: [
       {
         url: "https://merchant.example/webhooks/zkpay",
       },
     ],
-    endpointRegistry: createD1WebhookEndpointRegistry(env.DB),
+    endpointRegistry: webhookEndpointStore,
   }),
   webhookDeliveryStore: createD1WebhookDeliveryStore(env.DB),
 });
@@ -58,6 +61,9 @@ webhook response generation still complete.
 `createD1WebhookEndpointRegistry` and `InMemoryWebhookEndpointRegistry` let the
 HTTP dispatcher resolve targets per event. A registry endpoint can be global or
 scoped to `intent.metadata.merchantId`, and can optionally restrict event types.
+When supplied as `webhookEndpointStore`, the same adapters power
+`POST /webhooks/endpoints`, `GET /webhooks/endpoints`, and
+`PATCH /webhooks/endpoints/:id`.
 
 Configured delivery stores can be queried through
 `GET /webhooks/deliveries?paymentId=zkp_...` or
@@ -80,10 +86,13 @@ import {
   createZkpayApi,
 } from "zkpay-sh/api";
 
+const webhookEndpointStore = createD1WebhookEndpointRegistry(env.DB);
+
 const app = createZkpayApi({
   replayStore: createD1SuiReplayStore(env.DB),
+  webhookEndpointStore,
   webhookDispatcher: createHttpWebhookDispatcher({
-    endpointRegistry: createD1WebhookEndpointRegistry(env.DB),
+    endpointRegistry: webhookEndpointStore,
   }),
   webhookDeliveryStore: createD1WebhookDeliveryStore(env.DB),
 });

@@ -20,6 +20,9 @@ interface Env {
 
 export default {
   fetch(request: Request, env: Env, context: WorkerExecutionContext) {
+    const webhookEndpointStore = createD1WebhookEndpointRegistry(
+      env.ZKPAY_REPLAY,
+    );
     const webhookDispatcher = env.ZKPAY_WEBHOOK_SECRET
       ? createHttpWebhookDispatcher({
           targets: env.ZKPAY_WEBHOOK_URL
@@ -29,7 +32,7 @@ export default {
                 },
               ]
             : [],
-          endpointRegistry: createD1WebhookEndpointRegistry(env.ZKPAY_REPLAY),
+          endpointRegistry: webhookEndpointStore,
         })
       : undefined;
 
@@ -38,6 +41,7 @@ export default {
       replayStore: createD1SuiReplayStore(env.ZKPAY_REPLAY),
       webhookSecret: env.ZKPAY_WEBHOOK_SECRET,
       webhookDispatcher,
+      webhookEndpointStore,
       webhookDeliveryStore: webhookDispatcher
         ? createD1WebhookDeliveryStore(env.ZKPAY_REPLAY)
         : undefined,

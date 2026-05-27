@@ -25,6 +25,7 @@
 - Local webhook signing and verification through the CLI.
 - Opt-in HTTP webhook dispatcher with retry policy.
 - In-memory and D1 webhook endpoint registries.
+- Webhook endpoint management API.
 - In-memory and D1 webhook delivery log stores.
 - Delivery log query API by payment id or event id.
 
