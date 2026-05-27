@@ -1,10 +1,10 @@
 # Webhooks
 
-zkpay webhook signing is a merchant-side primitive. It does not deliver
-webhooks by itself yet; it defines the event shape and HMAC signature boundary
-that merchant systems can use once fulfillment automation is attached. The API
-can also attach a signed webhook event to successful verification responses when
-`webhookSecret` is configured.
+zkpay webhook signing is a merchant-side primitive. It defines the event shape
+and HMAC signature boundary for fulfillment automation. The API can attach a
+signed webhook event to successful verification responses when `webhookSecret`
+is configured, and it can optionally dispatch those events to static targets or
+a webhook endpoint registry.
 
 ## Event Shape
 
@@ -130,6 +130,7 @@ To enable opt-in delivery from the API, attach a dispatcher:
 
 ```ts
 import {
+  createD1WebhookEndpointRegistry,
   createD1WebhookDeliveryStore,
   createHttpWebhookDispatcher,
   createZkpayApi,
@@ -143,6 +144,7 @@ const app = createZkpayApi({
         url: "https://merchant.example/webhooks/zkpay",
       },
     ],
+    endpointRegistry: createD1WebhookEndpointRegistry(env.DB),
   }),
   webhookDeliveryStore: createD1WebhookDeliveryStore(env.DB),
 });
@@ -153,6 +155,11 @@ The dispatcher posts the canonical event JSON and sets
 `webhookDelivery` results so merchant systems can observe whether delivery was
 accepted. With a delivery store, each result is recorded by event id, payment id,
 target URL, status, attempt count, error, and completion time.
+
+Endpoint registries are useful once a merchant can manage webhook endpoints
+from a dashboard. The built-in D1 registry reads `zkpay_webhook_endpoints`,
+selects enabled global endpoints plus endpoints whose `merchant_id` matches
+`intent.metadata.merchantId`, then filters by `event_types_json` when present.
 
 Delivery logs can be queried from the same API when the configured store
 supports listing:

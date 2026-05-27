@@ -41,7 +41,7 @@
             <a href="decisions/0001-model-first.html">ADR 0001</a>
           </aside>
           <article class="doc-body">
-            <section><p>zkpay webhook signing is a merchant-side primitive. It does not deliver webhooks by itself yet; it defines the event shape and HMAC signature boundary that merchant systems can use once fulfillment automation is attached. The API can also attach a signed webhook event to successful verification responses when <code>webhookSecret</code> is configured.</p></section>
+            <section><p>zkpay webhook signing is a merchant-side primitive. It defines the event shape and HMAC signature boundary for fulfillment automation. The API can attach a signed webhook event to successful verification responses when <code>webhookSecret</code> is configured, and it can optionally dispatch those events to static targets or a webhook endpoint registry.</p></section>
 <section><h2>Event Shape</h2>
 <pre><code class="language-json">{
   &quot;id&quot;: &quot;zkw_...&quot;,
@@ -122,6 +122,7 @@ const app = createZkpayApi({
 <p>Without a dispatcher, the API returns the signed event so merchant systems can forward, store, or verify it inside their own fulfillment pipeline.</p>
 <p>To enable opt-in delivery from the API, attach a dispatcher:</p>
 <pre><code class="language-ts">import {
+  createD1WebhookEndpointRegistry,
   createD1WebhookDeliveryStore,
   createHttpWebhookDispatcher,
   createZkpayApi,
@@ -135,10 +136,12 @@ const app = createZkpayApi({
         url: &quot;https://merchant.example/webhooks/zkpay&quot;,
       },
     ],
+    endpointRegistry: createD1WebhookEndpointRegistry(env.DB),
   }),
   webhookDeliveryStore: createD1WebhookDeliveryStore(env.DB),
 });</code></pre>
 <p>The dispatcher posts the canonical event JSON and sets <code>zkpay-signature: t=...,v1=...</code>. Verification responses include <code>webhookDelivery</code> results so merchant systems can observe whether delivery was accepted. With a delivery store, each result is recorded by event id, payment id, target URL, status, attempt count, error, and completion time.</p>
+<p>Endpoint registries are useful once a merchant can manage webhook endpoints from a dashboard. The built-in D1 registry reads <code>zkpay_webhook_endpoints</code>, selects enabled global endpoints plus endpoints whose <code>merchant_id</code> matches <code>intent.metadata.merchantId</code>, then filters by <code>event_types_json</code> when present.</p>
 <p>Delivery logs can be queried from the same API when the configured store supports listing:</p>
 <pre><code class="language-bash">curl &quot;https://api.example.com/webhooks/deliveries?paymentId=zkp_...&amp;limit=20&quot;
 curl &quot;https://api.example.com/webhooks/deliveries?eventId=evt_...&quot;</code></pre>

@@ -261,6 +261,10 @@ export interface WebhookDeliveryStoreOptions {
   tableName?: string;
 }
 
+export interface WebhookEndpointRegistryOptions {
+  tableName?: string;
+}
+
 export interface WebhookDeliveryRecord {
   eventId: string;
   paymentId: string;
@@ -288,6 +292,21 @@ export interface WebhookDeliveryStore {
   ): Promise<WebhookDeliveryRecord[]> | WebhookDeliveryRecord[];
 }
 
+export interface WebhookEndpoint extends HttpWebhookTarget {
+  id: string;
+  merchantId?: string;
+  eventTypes?: readonly WebhookEvent["type"][];
+  enabled?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface WebhookEndpointRegistry {
+  listTargets(
+    webhook: SignedWebhookEvent,
+  ): Promise<readonly HttpWebhookTarget[]> | readonly HttpWebhookTarget[];
+}
+
 export class InMemoryWebhookDeliveryStore implements WebhookDeliveryStore {
   readonly records: WebhookDeliveryRecord[] = [];
 
@@ -309,6 +328,27 @@ export class InMemoryWebhookDeliveryStore implements WebhookDeliveryStore {
         right.completedAt.localeCompare(left.completedAt),
       )
       .slice(0, limit);
+  }
+}
+
+export class InMemoryWebhookEndpointRegistry implements WebhookEndpointRegistry {
+  readonly endpoints: WebhookEndpoint[] = [];
+
+  constructor(endpoints: readonly WebhookEndpoint[] = []) {
+    this.endpoints.push(...endpoints);
+  }
+
+  add(endpoint: WebhookEndpoint): void {
+    this.endpoints.push(endpoint);
+  }
+
+  listTargets(webhook: SignedWebhookEvent): readonly HttpWebhookTarget[] {
+    return this.endpoints
+      .filter((endpoint) => matchesWebhookEndpoint(endpoint, webhook))
+      .map((endpoint) => ({
+        url: endpoint.url,
+        headers: endpoint.headers,
+      }));
   }
 }
 
@@ -405,6 +445,64 @@ export function createD1WebhookDeliveryStoreSchema(
   ].join("\n");
 }
 
+export function createD1WebhookEndpointRegistry(
+  database: D1DatabaseLike,
+  options: WebhookEndpointRegistryOptions = {},
+): WebhookEndpointRegistry {
+  const tableName = sqlIdentifier(options.tableName ?? "zkpay_webhook_endpoints");
+
+  return {
+    async listTargets(webhook) {
+      const merchantId = webhook.event.intent?.metadata.merchantId;
+      const columns =
+        "id, merchant_id, url, headers_json, event_types_json, enabled, created_at, updated_at";
+      const result = merchantId
+        ? await allD1<D1WebhookEndpointRow>(
+            database
+              .prepare(
+                `select ${columns} from ${tableName} where enabled = 1 and (merchant_id is null or merchant_id = ?) order by created_at asc, id asc`,
+              )
+              .bind(merchantId),
+          )
+        : await allD1<D1WebhookEndpointRow>(
+            database
+              .prepare(
+                `select ${columns} from ${tableName} where enabled = 1 and merchant_id is null order by created_at asc, id asc`,
+              ),
+          );
+
+      return d1Rows(result)
+        .map(mapD1WebhookEndpoint)
+        .filter((endpoint) => matchesWebhookEndpoint(endpoint, webhook))
+        .map((endpoint) => ({
+          url: endpoint.url,
+          headers: endpoint.headers,
+        }));
+    },
+  };
+}
+
+export function createD1WebhookEndpointRegistrySchema(
+  options: WebhookEndpointRegistryOptions = {},
+): string {
+  const tableName = sqlIdentifier(options.tableName ?? "zkpay_webhook_endpoints");
+
+  return [
+    `create table if not exists ${tableName} (`,
+    "  id text primary key,",
+    "  merchant_id text,",
+    "  url text not null,",
+    "  headers_json text,",
+    "  event_types_json text,",
+    "  enabled integer not null default 1,",
+    "  created_at text not null,",
+    "  updated_at text not null",
+    ");",
+    `create index if not exists ${tableName}_merchant_id_idx on ${tableName} (merchant_id);`,
+    `create index if not exists ${tableName}_enabled_idx on ${tableName} (enabled);`,
+  ].join("\n");
+}
+
 export interface ZkpayApiOptions extends ZkpayClientOptions {
   sui?: SuiReceiptVerifierOptions;
   suiVerifier?: SuiVerifier;
@@ -453,7 +551,8 @@ export interface WebhookRetryOptions {
 }
 
 export interface HttpWebhookDispatcherOptions {
-  targets: readonly HttpWebhookTarget[];
+  targets?: readonly HttpWebhookTarget[];
+  endpointRegistry?: WebhookEndpointRegistry;
   retry?: WebhookRetryOptions;
   fetch?: typeof globalThis.fetch;
 }
@@ -461,13 +560,10 @@ export interface HttpWebhookDispatcherOptions {
 export function createHttpWebhookDispatcher(
   options: HttpWebhookDispatcherOptions,
 ): WebhookDispatcher {
-  const targets = options.targets.map((target) => ({
-    ...target,
-    url: target.url.trim(),
-  }));
+  const targets = (options.targets ?? []).map(normalizeWebhookTarget);
 
-  if (targets.length === 0) {
-    throw new Error("At least one webhook target is required");
+  if (targets.length === 0 && !options.endpointRegistry) {
+    throw new Error("At least one webhook target or endpoint registry is required");
   }
 
   for (const target of targets) {
@@ -482,8 +578,19 @@ export function createHttpWebhookDispatcher(
 
   return {
     async dispatch(webhook) {
+      const registryTargets = options.endpointRegistry
+        ? (await options.endpointRegistry.listTargets(webhook)).map(
+            normalizeWebhookTarget,
+          )
+        : [];
+      const deliveryTargets = [...targets, ...registryTargets];
+
+      for (const target of deliveryTargets) {
+        if (!target.url) throw new Error("Webhook target URL is required");
+      }
+
       return Promise.all(
-        targets.map((target) =>
+        deliveryTargets.map((target) =>
           deliverHttpWebhook(webhook, target, fetchFn, options.retry),
         ),
       );
@@ -995,6 +1102,17 @@ interface D1WebhookDeliveryRow {
   completed_at: string;
 }
 
+interface D1WebhookEndpointRow {
+  id: string;
+  merchant_id?: string | null;
+  url: string;
+  headers_json?: string | null;
+  event_types_json?: string | null;
+  enabled: boolean | number;
+  created_at: string;
+  updated_at: string;
+}
+
 function replayRecordFromD1Row(row: D1SuiReplayRow): SuiReplayRecord {
   return {
     paymentId: row.payment_id,
@@ -1005,6 +1123,46 @@ function replayRecordFromD1Row(row: D1SuiReplayRow): SuiReplayRecord {
     nonce: row.nonce,
     settledAt: row.settled_at,
     verifiedAt: row.verified_at,
+  };
+}
+
+function mapD1WebhookEndpoint(row: D1WebhookEndpointRow): WebhookEndpoint {
+  return {
+    id: row.id,
+    merchantId: row.merchant_id === null ? undefined : row.merchant_id,
+    url: row.url,
+    headers: parseD1StringRecord(row.headers_json, "headers_json"),
+    eventTypes: parseD1WebhookEventTypes(row.event_types_json),
+    enabled: Number(row.enabled) === 1,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function matchesWebhookEndpoint(
+  endpoint: WebhookEndpoint,
+  webhook: SignedWebhookEvent,
+): boolean {
+  if (endpoint.enabled === false) return false;
+  if (!endpoint.url.trim()) return false;
+
+  const merchantId = webhook.event.intent?.metadata.merchantId;
+
+  if (endpoint.merchantId && endpoint.merchantId !== merchantId) {
+    return false;
+  }
+
+  if (endpoint.eventTypes && endpoint.eventTypes.length > 0) {
+    return endpoint.eventTypes.includes(webhook.event.type);
+  }
+
+  return true;
+}
+
+function normalizeWebhookTarget(target: HttpWebhookTarget): HttpWebhookTarget {
+  return {
+    ...target,
+    url: target.url.trim(),
   };
 }
 
@@ -1022,6 +1180,48 @@ function mapD1WebhookDeliveryRecord(
     error: row.error === null ? undefined : row.error,
     completedAt: row.completed_at,
   };
+}
+
+function parseD1StringRecord(
+  value: string | null | undefined,
+  fieldName: string,
+): Record<string, string> | undefined {
+  if (!value) return undefined;
+
+  const parsed = JSON.parse(value);
+
+  if (
+    typeof parsed !== "object" ||
+    parsed === null ||
+    Array.isArray(parsed) ||
+    !Object.values(parsed).every((item) => typeof item === "string")
+  ) {
+    throw new Error(`Invalid ${fieldName}`);
+  }
+
+  return parsed as Record<string, string>;
+}
+
+function parseD1WebhookEventTypes(
+  value: string | null | undefined,
+): WebhookEvent["type"][] | undefined {
+  if (!value) return undefined;
+
+  const parsed = JSON.parse(value);
+
+  if (
+    !Array.isArray(parsed) ||
+    !parsed.every(
+      (item) =>
+        item === "payment.succeeded" ||
+        item === "payment.failed" ||
+        item === "payment.updated",
+    )
+  ) {
+    throw new Error("Invalid event_types_json");
+  }
+
+  return parsed;
 }
 
 function d1Rows<T>(result: D1ResultLike<T> | T[]): T[] {

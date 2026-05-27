@@ -557,6 +557,7 @@ the current static marketing page.
 - signed payment intents and signed webhook event primitives;
 - local webhook signing and verification for scripts;
 - opt-in HTTP webhook dispatcher for merchant callbacks;
+- in-memory and D1 webhook endpoint registries;
 - in-memory and D1 webhook delivery log stores;
 - delivery log query API by payment id or event id;
 - merchant-side digest replay storage still required.

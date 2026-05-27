@@ -32,6 +32,7 @@ Webhook delivery is opt-in through a dispatcher:
 
 ```ts
 import {
+  createD1WebhookEndpointRegistry,
   createD1WebhookDeliveryStore,
   createHttpWebhookDispatcher,
   createZkpayApi,
@@ -45,6 +46,7 @@ const app = createZkpayApi({
         url: "https://merchant.example/webhooks/zkpay",
       },
     ],
+    endpointRegistry: createD1WebhookEndpointRegistry(env.DB),
   }),
   webhookDeliveryStore: createD1WebhookDeliveryStore(env.DB),
 });
@@ -52,6 +54,10 @@ const app = createZkpayApi({
 
 Delivery logs are best-effort. If the log store fails, payment verification and
 webhook response generation still complete.
+
+`createD1WebhookEndpointRegistry` and `InMemoryWebhookEndpointRegistry` let the
+HTTP dispatcher resolve targets per event. A registry endpoint can be global or
+scoped to `intent.metadata.merchantId`, and can optionally restrict event types.
 
 Configured delivery stores can be queried through
 `GET /webhooks/deliveries?paymentId=zkp_...` or
@@ -62,18 +68,23 @@ views.
 generate hosted checkout URLs with `network`, `coinType`, `decimals`, and
 `bindingPackageId` already attached.
 
-Cloudflare D1 replay and webhook delivery storage are available without another
-dependency:
+Cloudflare D1 replay storage, webhook endpoint registry, and webhook delivery
+storage are available without another dependency:
 
 ```ts
 import {
   createD1SuiReplayStore,
+  createD1WebhookEndpointRegistry,
   createD1WebhookDeliveryStore,
+  createHttpWebhookDispatcher,
   createZkpayApi,
 } from "zkpay-sh/api";
 
 const app = createZkpayApi({
   replayStore: createD1SuiReplayStore(env.DB),
+  webhookDispatcher: createHttpWebhookDispatcher({
+    endpointRegistry: createD1WebhookEndpointRegistry(env.DB),
+  }),
   webhookDeliveryStore: createD1WebhookDeliveryStore(env.DB),
 });
 ```

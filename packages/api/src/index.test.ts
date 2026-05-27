@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import { ZkpayClient } from "@zkpay/sdk";
 import {
   InMemoryWebhookDeliveryStore,
+  InMemoryWebhookEndpointRegistry,
   createD1SuiReplayStore,
   createD1SuiReplayStoreSchema,
+  createD1WebhookEndpointRegistry,
+  createD1WebhookEndpointRegistrySchema,
   createD1WebhookDeliveryStore,
   createD1WebhookDeliveryStoreSchema,
   createHttpWebhookDispatcher,
@@ -13,6 +16,7 @@ import {
   type SuiReplayRecord,
   type SuiVerifier,
   type WebhookDeliveryRecord,
+  type WebhookEndpoint,
   type WebhookDispatcher,
 } from "./index.js";
 
@@ -474,6 +478,189 @@ describe("@zkpay/api", () => {
     });
   });
 
+  it("dispatches HTTP webhooks from an endpoint registry", async () => {
+    const webhookClient = new ZkpayClient({
+      webhookSecret: "webhook_secret",
+    });
+    const payment = webhookClient.createPayment(
+      {
+        amount: "20",
+        coin: "USDC",
+        receiver: "0x84f",
+        label: "API credits",
+        metadata: {
+          merchantId: "merchant_a",
+        },
+      },
+      {
+        id: "zkp_registry123",
+        nonce: "nonce_registry123",
+        now: "2026-05-25T01:00:00.000Z",
+      },
+    );
+    const event = webhookClient.createWebhookEvent(
+      {
+        type: "payment.succeeded",
+        paymentId: payment.intent.id,
+        intent: payment.intent,
+      },
+      {
+        id: "zkw_registry123",
+        now: "2026-05-25T01:01:00.000Z",
+      },
+    );
+    const signatureHeader = webhookClient.signWebhookEvent(event);
+    const capturedUrls: (string | URL | Request)[] = [];
+    const registry = new InMemoryWebhookEndpointRegistry([
+      {
+        id: "global",
+        url: "https://merchant.example/webhooks/global",
+        eventTypes: ["payment.succeeded"],
+      },
+      {
+        id: "merchant-a",
+        merchantId: "merchant_a",
+        url: "https://merchant.example/webhooks/a",
+        headers: {
+          "x-endpoint": "merchant-a",
+        },
+      },
+      {
+        id: "merchant-b",
+        merchantId: "merchant_b",
+        url: "https://merchant.example/webhooks/b",
+      },
+      {
+        id: "disabled",
+        url: "https://merchant.example/webhooks/disabled",
+        enabled: false,
+      },
+    ]);
+    const dispatcher = createHttpWebhookDispatcher({
+      endpointRegistry: registry,
+      retry: {
+        attempts: 1,
+      },
+      fetch: async (url) => {
+        capturedUrls.push(url);
+
+        return {
+          ok: true,
+          status: 202,
+        } as Response;
+      },
+    });
+
+    const results = await dispatcher.dispatch({
+      event,
+      signatureHeader,
+    });
+
+    expect(results).toMatchObject([
+      {
+        ok: true,
+        url: "https://merchant.example/webhooks/global",
+        status: 202,
+      },
+      {
+        ok: true,
+        url: "https://merchant.example/webhooks/a",
+        status: 202,
+      },
+    ]);
+    expect(capturedUrls).toEqual([
+      "https://merchant.example/webhooks/global",
+      "https://merchant.example/webhooks/a",
+    ]);
+  });
+
+  it("dispatches HTTP webhooks from a D1 endpoint registry", async () => {
+    const database = new FakeD1Database();
+    database.webhookEndpoints.push(
+      {
+        id: "merchant-a",
+        merchantId: "merchant_a",
+        url: "https://merchant.example/webhooks/a",
+        headers: {
+          "x-endpoint": "merchant-a",
+        },
+        eventTypes: ["payment.succeeded"],
+        enabled: true,
+        createdAt: "2026-05-25T01:00:00.000Z",
+        updatedAt: "2026-05-25T01:00:00.000Z",
+      },
+      {
+        id: "merchant-b",
+        merchantId: "merchant_b",
+        url: "https://merchant.example/webhooks/b",
+        enabled: true,
+        createdAt: "2026-05-25T01:00:00.000Z",
+        updatedAt: "2026-05-25T01:00:00.000Z",
+      },
+    );
+    const webhookClient = new ZkpayClient({
+      webhookSecret: "webhook_secret",
+    });
+    const payment = webhookClient.createPayment(
+      {
+        amount: "20",
+        coin: "USDC",
+        receiver: "0x84f",
+        label: "API credits",
+        metadata: {
+          merchantId: "merchant_a",
+        },
+      },
+      {
+        id: "zkp_d1registry123",
+        nonce: "nonce_d1registry123",
+        now: "2026-05-25T01:00:00.000Z",
+      },
+    );
+    const event = webhookClient.createWebhookEvent(
+      {
+        type: "payment.succeeded",
+        paymentId: payment.intent.id,
+        intent: payment.intent,
+      },
+      {
+        id: "zkw_d1registry123",
+        now: "2026-05-25T01:01:00.000Z",
+      },
+    );
+    let capturedInit: RequestInit | undefined;
+    const dispatcher = createHttpWebhookDispatcher({
+      endpointRegistry: createD1WebhookEndpointRegistry(database),
+      retry: {
+        attempts: 1,
+      },
+      fetch: async (_url, init) => {
+        capturedInit = init;
+
+        return {
+          ok: true,
+          status: 202,
+        } as Response;
+      },
+    });
+
+    const results = await dispatcher.dispatch({
+      event,
+      signatureHeader: webhookClient.signWebhookEvent(event),
+    });
+
+    expect(results).toMatchObject([
+      {
+        ok: true,
+        url: "https://merchant.example/webhooks/a",
+        status: 202,
+      },
+    ]);
+    expect(capturedInit?.headers).toMatchObject({
+      "x-endpoint": "merchant-a",
+    });
+  });
+
   it("can require signed payment intents at the HTTP boundary", async () => {
     const app = createZkpayApi({
       signingSecret: "merchant_secret",
@@ -896,6 +1083,21 @@ describe("@zkpay/api", () => {
       createD1WebhookDeliveryStoreSchema({ tableName: "bad-name" }),
     ).toThrow("Invalid SQL identifier");
   });
+
+  it("generates D1 webhook endpoint registry schema", () => {
+    expect(createD1WebhookEndpointRegistrySchema()).toContain(
+      "create table if not exists zkpay_webhook_endpoints",
+    );
+    expect(
+      createD1WebhookEndpointRegistrySchema({ tableName: "merchant_endpoints" }),
+    ).toContain("create table if not exists merchant_endpoints");
+    expect(createD1WebhookEndpointRegistrySchema()).toContain(
+      "event_types_json text",
+    );
+    expect(() =>
+      createD1WebhookEndpointRegistrySchema({ tableName: "bad-name" }),
+    ).toThrow("Invalid SQL identifier");
+  });
 });
 
 function makeSuccessfulSuiVerifier(): SuiVerifier {
@@ -927,6 +1129,7 @@ function makeSuccessfulSuiVerifier(): SuiVerifier {
 class FakeD1Database implements D1DatabaseLike {
   readonly records: SuiReplayRecord[] = [];
   readonly webhookDeliveryRecords: WebhookDeliveryRecord[] = [];
+  readonly webhookEndpoints: WebhookEndpoint[] = [];
 
   prepare(query: string): D1PreparedStatementLike {
     return new FakeD1PreparedStatement(this, query);
@@ -965,6 +1168,12 @@ class FakeD1PreparedStatement implements D1PreparedStatementLike {
   }
 
   async all<T = unknown>(): Promise<{ results: T[] }> {
+    if (this.query.includes("headers_json")) {
+      return {
+        results: this.queryWebhookEndpoints() as T[],
+      };
+    }
+
     let records = [...this.database.webhookDeliveryRecords];
     let limit = 50;
 
@@ -1008,6 +1217,39 @@ class FakeD1PreparedStatement implements D1PreparedStatementLike {
     return {
       results: results as T[],
     };
+  }
+
+  private queryWebhookEndpoints(): unknown[] {
+    const merchantId = this.values[0] ? String(this.values[0]) : undefined;
+    const records = this.database.webhookEndpoints
+      .filter((endpoint) => endpoint.enabled !== false)
+      .filter((endpoint) =>
+        merchantId
+          ? !endpoint.merchantId || endpoint.merchantId === merchantId
+          : !endpoint.merchantId,
+      )
+      .sort((left, right) => {
+        const leftTime = left.createdAt ?? "";
+        const rightTime = right.createdAt ?? "";
+        const timeOrder = leftTime.localeCompare(rightTime);
+
+        return timeOrder === 0 ? left.id.localeCompare(right.id) : timeOrder;
+      });
+
+    return records.map((record) => ({
+      id: record.id,
+      merchant_id: record.merchantId ?? null,
+      url: record.url,
+      headers_json: record.headers
+        ? JSON.stringify(record.headers)
+        : null,
+      event_types_json: record.eventTypes
+        ? JSON.stringify(record.eventTypes)
+        : null,
+      enabled: record.enabled === false ? 0 : 1,
+      created_at: record.createdAt ?? "2026-05-25T01:00:00.000Z",
+      updated_at: record.updatedAt ?? "2026-05-25T01:00:00.000Z",
+    }));
   }
 
   async run(): Promise<unknown> {

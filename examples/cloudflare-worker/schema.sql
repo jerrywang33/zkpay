@@ -27,3 +27,20 @@ create index if not exists zkpay_webhook_delivery_payment_id_idx
 
 create index if not exists zkpay_webhook_delivery_event_id_idx
   on zkpay_webhook_delivery (event_id);
+
+create table if not exists zkpay_webhook_endpoints (
+  id text primary key,
+  merchant_id text,
+  url text not null,
+  headers_json text,
+  event_types_json text,
+  enabled integer not null default 1,
+  created_at text not null,
+  updated_at text not null
+);
+
+create index if not exists zkpay_webhook_endpoints_merchant_id_idx
+  on zkpay_webhook_endpoints (merchant_id);
+
+create index if not exists zkpay_webhook_endpoints_enabled_idx
+  on zkpay_webhook_endpoints (enabled);

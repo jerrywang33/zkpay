@@ -204,6 +204,7 @@ results in the verification response:
 
 ```ts
 import {
+  createD1WebhookEndpointRegistry,
   createD1WebhookDeliveryStore,
   createHttpWebhookDispatcher,
   createZkpayApi,
@@ -217,6 +218,7 @@ const app = createZkpayApi({
         url: "https://merchant.example/webhooks/zkpay",
       },
     ],
+    endpointRegistry: createD1WebhookEndpointRegistry(env.DB),
     retry: {
       attempts: 3,
       delayMs: 250,
@@ -250,6 +252,12 @@ Delivery result:
 The delivery log store is best-effort. If it fails, verification responses still
 return the signed webhook event and delivery results with `webhookDeliveryLog`
 set to a failed log status.
+
+`endpointRegistry` lets the dispatcher resolve targets per webhook event instead
+of hardcoding every URL in process config. The built-in memory registry and D1
+registry support optional `merchantId` and `eventTypes` filters. For D1, store
+the merchant id in `PaymentIntent.metadata.merchantId`; global endpoints use a
+null `merchant_id` and receive matching events for every merchant.
 
 ### `GET /webhooks/deliveries`
 
@@ -311,22 +319,29 @@ merchant backends should pass a durable `replayStore` implementation backed by
 their own database or cache.
 
 Cloudflare D1 is supported through the public API subpath for both replay
-protection and webhook delivery logs:
+protection, webhook endpoint registry, and webhook delivery logs:
 
 ```ts
 import {
   createD1SuiReplayStore,
+  createD1WebhookEndpointRegistry,
+  createD1WebhookEndpointRegistrySchema,
   createD1WebhookDeliveryStore,
   createD1WebhookDeliveryStoreSchema,
   createD1SuiReplayStoreSchema,
+  createHttpWebhookDispatcher,
   createZkpayApi,
 } from "zkpay-sh/api";
 
 console.log(createD1SuiReplayStoreSchema());
+console.log(createD1WebhookEndpointRegistrySchema());
 console.log(createD1WebhookDeliveryStoreSchema());
 
 const app = createZkpayApi({
   replayStore: createD1SuiReplayStore(env.DB),
+  webhookDispatcher: createHttpWebhookDispatcher({
+    endpointRegistry: createD1WebhookEndpointRegistry(env.DB),
+  }),
   webhookDeliveryStore: createD1WebhookDeliveryStore(env.DB),
 });
 ```

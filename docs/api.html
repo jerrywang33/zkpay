@@ -176,6 +176,7 @@
 <p>If <code>createZkpayApi({ webhookSecret })</code> is used, successful verification responses include a signed webhook event. Merchant backends can forward the event internally or store it for reconciliation, then verify the <code>signatureHeader</code> with the same secret before fulfillment.</p>
 <p>Webhook delivery is opt-in through <code>webhookDispatcher</code>. The helper below posts the signed event body with a <code>zkpay-signature</code> header and records delivery results in the verification response:</p>
 <pre><code class="language-ts">import {
+  createD1WebhookEndpointRegistry,
   createD1WebhookDeliveryStore,
   createHttpWebhookDispatcher,
   createZkpayApi,
@@ -189,6 +190,7 @@ const app = createZkpayApi({
         url: &quot;https://merchant.example/webhooks/zkpay&quot;,
       },
     ],
+    endpointRegistry: createD1WebhookEndpointRegistry(env.DB),
     retry: {
       attempts: 3,
       delayMs: 250,
@@ -214,6 +216,7 @@ const app = createZkpayApi({
   }
 }</code></pre>
 <p>The delivery log store is best-effort. If it fails, verification responses still return the signed webhook event and delivery results with <code>webhookDeliveryLog</code> set to a failed log status.</p>
+<p><code>endpointRegistry</code> lets the dispatcher resolve targets per webhook event instead of hardcoding every URL in process config. The built-in memory registry and D1 registry support optional <code>merchantId</code> and <code>eventTypes</code> filters. For D1, store the merchant id in <code>PaymentIntent.metadata.merchantId</code>; global endpoints use a null <code>merchant_id</code> and receive matching events for every merchant.</p>
 <h3><code>GET /webhooks/deliveries</code></h3>
 <p>When the API is configured with a delivery store that supports listing, webhook attempts can be queried for reconciliation or operations screens:</p>
 <pre><code class="language-bash">curl &quot;https://api.example.com/webhooks/deliveries?paymentId=zkp_...&amp;limit=20&quot;
@@ -248,20 +251,27 @@ curl &quot;https://api.example.com/webhooks/deliveries?eventId=evt_...&quot;</co
   }
 }</code></pre>
 <p>The default store only protects a single running API process. Production merchant backends should pass a durable <code>replayStore</code> implementation backed by their own database or cache.</p>
-<p>Cloudflare D1 is supported through the public API subpath for both replay protection and webhook delivery logs:</p>
+<p>Cloudflare D1 is supported through the public API subpath for both replay protection, webhook endpoint registry, and webhook delivery logs:</p>
 <pre><code class="language-ts">import {
   createD1SuiReplayStore,
+  createD1WebhookEndpointRegistry,
+  createD1WebhookEndpointRegistrySchema,
   createD1WebhookDeliveryStore,
   createD1WebhookDeliveryStoreSchema,
   createD1SuiReplayStoreSchema,
+  createHttpWebhookDispatcher,
   createZkpayApi,
 } from &quot;zkpay-sh/api&quot;;
 
 console.log(createD1SuiReplayStoreSchema());
+console.log(createD1WebhookEndpointRegistrySchema());
 console.log(createD1WebhookDeliveryStoreSchema());
 
 const app = createZkpayApi({
   replayStore: createD1SuiReplayStore(env.DB),
+  webhookDispatcher: createHttpWebhookDispatcher({
+    endpointRegistry: createD1WebhookEndpointRegistry(env.DB),
+  }),
   webhookDeliveryStore: createD1WebhookDeliveryStore(env.DB),
 });</code></pre>
 <p>See <code>examples/cloudflare-worker/</code> for a minimal Worker entrypoint and D1 schema.</p></section>

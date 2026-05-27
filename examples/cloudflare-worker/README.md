@@ -6,14 +6,18 @@ Sui replay protection plus optional webhook delivery logs.
 ```ts
 import {
   createD1SuiReplayStore,
+  createD1WebhookEndpointRegistry,
   createD1WebhookDeliveryStore,
   createHttpWebhookDispatcher,
   createZkpayApi,
 } from "zkpay-sh/api";
 
-const webhookDispatcher = env.ZKPAY_WEBHOOK_URL
+const webhookDispatcher = env.ZKPAY_WEBHOOK_SECRET
   ? createHttpWebhookDispatcher({
-      targets: [{ url: env.ZKPAY_WEBHOOK_URL }],
+      targets: env.ZKPAY_WEBHOOK_URL
+        ? [{ url: env.ZKPAY_WEBHOOK_URL }]
+        : [],
+      endpointRegistry: createD1WebhookEndpointRegistry(env.ZKPAY_REPLAY),
     })
   : undefined;
 
@@ -37,6 +41,9 @@ verification responses can post signed `payment.succeeded` events and record
 delivery attempts in `zkpay_webhook_delivery`.
 Those attempts are queryable through `GET /webhooks/deliveries?paymentId=...`
 or `GET /webhooks/deliveries?eventId=...`.
+Additional endpoints can be stored in `zkpay_webhook_endpoints`; rows with a
+null `merchant_id` are global, and merchant-scoped rows match
+`PaymentIntent.metadata.merchantId`.
 
 The Worker stays non-custodial. Merchant fulfillment should happen after the
 backend receives a successful verification response.
