@@ -38,14 +38,16 @@ available. Public installs should use `zkpay-sh/api`.
 The current alpha version is:
 
 ```txt
-0.2.0-alpha.13
+0.2.0-alpha.14
 ```
 
 It is published under the `next` dist-tag. Developer docs should use
 `zkpay-sh@next`; `latest` is not the integration target while the package is in
 alpha.
 
-`0.2.0-alpha.13` adds `zkpay webhook sign` and `zkpay webhook verify` for local
+`0.2.0-alpha.14` lets `zkpay webhook verify` consume the JSON output from
+`zkpay webhook sign --json` directly and adds CLI regression coverage.
+`0.2.0-alpha.13` added `zkpay webhook sign` and `zkpay webhook verify` for local
 webhook testing from scripts. `0.2.0-alpha.12` added signed webhook events to
 successful API verification responses when `webhookSecret` is configured.
 `0.2.0-alpha.11` added webhook event creation plus HMAC signing and verification
@@ -86,5 +88,5 @@ npx zkpay link create --amount 20 --coin USDC --receiver 0x84f --label "API cred
 ZKPAY_SIGNING_SECRET=merchant_secret npx zkpay link create --amount 20 --coin USDC --receiver 0x84f --json
 ZKPAY_SIGNING_SECRET=merchant_secret npx zkpay intent verify-signature --intent 'https://zkpay.sh/pay/zkp_...?intent=...&signature=...' --json
 ZKPAY_WEBHOOK_SECRET=webhook_secret npx zkpay webhook sign --intent '<json-or-checkout-url>' --receipt '<json>' --json
-ZKPAY_WEBHOOK_SECRET=webhook_secret npx zkpay webhook verify --event '<json>' --signature-header 't=...,v1=...' --json
+ZKPAY_WEBHOOK_SECRET=webhook_secret npx zkpay webhook verify --event '<webhook-sign-json-output>' --json
 ```

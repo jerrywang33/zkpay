@@ -1,6 +1,6 @@
 {
   "name": "zkpay-sh",
-  "version": "0.2.0-alpha.13",
+  "version": "0.2.0-alpha.14",
   "description": "Sui stablecoin checkout SDK and CLI for zkpay.sh.",
   "type": "module",
   "license": "MIT",

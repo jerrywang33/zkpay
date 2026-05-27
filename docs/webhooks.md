@@ -150,7 +150,9 @@ Verify an event locally:
 
 ```bash
 ZKPAY_WEBHOOK_SECRET=webhook_secret zkpay webhook verify \
-  --event '<json>' \
-  --signature-header 't=...,v1=...' \
+  --event '<webhook-sign-json-output>' \
   --json
 ```
+
+If the event JSON does not include `signatureHeader`, pass
+`--signature-header 't=...,v1=...'` explicitly.

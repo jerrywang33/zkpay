@@ -133,9 +133,9 @@ const app = createZkpayApi({
 }</code></pre>
 <p>Verify an event locally:</p>
 <pre><code class="language-bash">ZKPAY_WEBHOOK_SECRET=webhook_secret zkpay webhook verify \
-  --event &#039;&lt;json&gt;&#039; \
-  --signature-header &#039;t=...,v1=...&#039; \
-  --json</code></pre></section>
+  --event &#039;&lt;webhook-sign-json-output&gt;&#039; \
+  --json</code></pre>
+<p>If the event JSON does not include <code>signatureHeader</code>, pass <code>--signature-header &#039;t=...,v1=...&#039;</code> explicitly.</p></section>
           </article>
         </div>
       </main>

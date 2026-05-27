@@ -177,7 +177,7 @@ It also reads `ZKPAY_WEBHOOK_SECRET` for local webhook signing and verification:
 
 ```bash
 zkpay webhook sign --intent '<json-or-checkout-url>' --receipt '<json>' --json
-zkpay webhook verify --event '<json>' --signature-header 't=...,v1=...' --json
+zkpay webhook verify --event '<webhook-sign-json-output>' --json
 ```
 
 The API includes a pluggable Sui replay store. By default it keeps an in-process

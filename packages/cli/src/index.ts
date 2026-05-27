@@ -130,7 +130,7 @@ try {
       ),
     });
     const event = values.event
-      ? parseWebhookEvent(values.event)
+      ? parseWebhookArgument(values.event).event
       : client.createWebhookEvent(
           {
             type:
@@ -182,13 +182,12 @@ try {
         "webhook-secret or ZKPAY_WEBHOOK_SECRET",
       ),
     });
-    const event = parseWebhookEvent(required(values.event, "event"));
+    const parsed = parseWebhookArgument(required(values.event, "event"));
+    const signatureHeader =
+      values["signature-header"] ?? values.signature ?? parsed.signatureHeader;
     const ok = client.verifyWebhookSignature(
-      event,
-      required(
-        values["signature-header"] ?? values.signature,
-        "signature-header",
-      ),
+      parsed.event,
+      required(signatureHeader, "signature-header"),
       undefined,
       {
         now: values.now ? Number(values.now) || values.now : undefined,
@@ -246,14 +245,22 @@ function parseIntent(value: string | undefined) {
   return parseIntentRequest(value).intent;
 }
 
-function parseWebhookEvent(value: string): WebhookEvent {
+function parseWebhookArgument(value: string): {
+  event: WebhookEvent;
+  signatureHeader?: string;
+} {
   const parsed = parseJson(value, "event");
 
   if (parsed && typeof parsed === "object" && "event" in parsed) {
-    return parsed.event;
+    return {
+      event: parsed.event,
+      signatureHeader: parsed.signatureHeader,
+    };
   }
 
-  return parsed;
+  return {
+    event: parsed,
+  };
 }
 
 function parseIntentRequest(value: string | undefined) {
@@ -331,7 +338,7 @@ function printUsage(): void {
       "  zkpay link create --amount 20 --coin USDC --receiver 0x...",
       "  zkpay intent verify-signature --intent '<json-or-checkout-url>'",
       "  zkpay webhook sign --intent '<json-or-checkout-url>' --receipt '<json>'",
-      "  zkpay webhook verify --event '<json>' --signature-header 't=...,v1=...'",
+      "  zkpay webhook verify --event '<json-or-sign-output>' --signature-header 't=...,v1=...'",
       "  zkpay receipt verify-sui --intent '<json-or-checkout-url>' --tx-digest <digest> --coin-type <type> --decimals 6",
       "",
       "Options:",

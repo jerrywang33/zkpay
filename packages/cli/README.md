@@ -48,8 +48,7 @@ ZKPAY_WEBHOOK_SECRET=webhook_secret zkpay webhook sign \
   --json
 
 ZKPAY_WEBHOOK_SECRET=webhook_secret zkpay webhook verify \
-  --event '<json>' \
-  --signature-header 't=...,v1=...' \
+  --event '<webhook-sign-json-output>' \
   --json
 ```
 
