@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ZkpayClient } from "@zkpay/sdk";
 import {
+  createHttpWebhookDispatcher,
   createD1SuiReplayStore,
   createD1SuiReplayStoreSchema,
   createZkpayApi,
@@ -8,6 +9,7 @@ import {
   type D1PreparedStatementLike,
   type SuiReplayRecord,
   type SuiVerifier,
+  type WebhookDispatcher,
 } from "./index.js";
 
 describe("@zkpay/api", () => {
@@ -183,6 +185,155 @@ describe("@zkpay/api", () => {
         json.webhook.signatureHeader,
       ),
     ).toBe(true);
+  });
+
+  it("dispatches signed webhook events when configured", async () => {
+    let capturedSignature: string | undefined;
+    let capturedPaymentId: string | undefined;
+    const dispatcher: WebhookDispatcher = {
+      async dispatch(webhook) {
+        capturedSignature = webhook.signatureHeader;
+        capturedPaymentId = webhook.event.paymentId;
+
+        return [
+          {
+            ok: true,
+            url: "https://merchant.example/webhooks/zkpay",
+            status: 202,
+            attemptCount: 1,
+            completedAt: "2026-05-25T01:02:00.000Z",
+          },
+        ];
+      },
+    };
+    const app = createZkpayApi({
+      webhookSecret: "webhook_secret",
+      webhookDispatcher: dispatcher,
+    });
+    const createResponse = await app.request("/payments", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        payment: {
+          amount: "20",
+          coin: "USDC",
+          receiver: "0x84f",
+          label: "API credits",
+        },
+      }),
+    });
+    const payment = await createResponse.json();
+
+    const verifyResponse = await app.request("/payments/verify", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        intent: payment.intent,
+        receipt: {
+          paymentId: payment.intent.id,
+          status: "succeeded",
+          txDigest: "9T9T9T9T9T9T9T9T",
+          amount: payment.intent.amount,
+          coin: payment.intent.coin,
+          receiver: payment.intent.receiver,
+          nonce: payment.intent.nonce,
+          settledAt: "2026-05-25T01:00:00.000Z",
+        },
+      }),
+    });
+    const json = await verifyResponse.json();
+
+    expect(verifyResponse.status).toBe(200);
+    expect(capturedSignature).toBe(json.webhook.signatureHeader);
+    expect(capturedPaymentId).toBe(payment.intent.id);
+    expect(json.webhookDelivery).toEqual([
+      {
+        ok: true,
+        url: "https://merchant.example/webhooks/zkpay",
+        status: 202,
+        attemptCount: 1,
+        completedAt: "2026-05-25T01:02:00.000Z",
+      },
+    ]);
+  });
+
+  it("creates an HTTP webhook dispatcher", async () => {
+    const webhookClient = new ZkpayClient({
+      webhookSecret: "webhook_secret",
+    });
+    const event = webhookClient.createWebhookEvent(
+      {
+        type: "payment.succeeded",
+        paymentId: "zkp_dispatch123",
+        data: {
+          source: "test",
+        },
+      },
+      {
+        id: "zkw_dispatch123",
+        now: "2026-05-25T01:01:00.000Z",
+      },
+    );
+    const signatureHeader = webhookClient.signWebhookEvent(
+      event,
+      undefined,
+      {
+        timestamp: 1_779_664_860,
+      },
+    );
+    let capturedUrl: string | URL | Request | undefined;
+    let capturedInit: RequestInit | undefined;
+    const dispatcher = createHttpWebhookDispatcher({
+      targets: [
+        {
+          url: "https://merchant.example/webhooks/zkpay",
+          headers: {
+            "x-merchant": "demo",
+          },
+        },
+      ],
+      retry: {
+        attempts: 1,
+      },
+      fetch: async (url, init) => {
+        capturedUrl = url;
+        capturedInit = init;
+
+        return {
+          ok: true,
+          status: 202,
+        } as Response;
+      },
+    });
+
+    const results = await dispatcher.dispatch({
+      event,
+      signatureHeader,
+    });
+
+    expect(results).toMatchObject([
+      {
+        ok: true,
+        url: "https://merchant.example/webhooks/zkpay",
+        status: 202,
+        attemptCount: 1,
+      },
+    ]);
+    expect(capturedUrl).toBe("https://merchant.example/webhooks/zkpay");
+    expect(capturedInit?.method).toBe("POST");
+    expect(capturedInit?.headers).toMatchObject({
+      "content-type": "application/json",
+      "zkpay-signature": signatureHeader,
+      "x-merchant": "demo",
+    });
+    expect(JSON.parse(String(capturedInit?.body))).toMatchObject({
+      id: "zkw_dispatch123",
+      paymentId: "zkp_dispatch123",
+    });
   });
 
   it("can require signed payment intents at the HTTP boundary", async () => {

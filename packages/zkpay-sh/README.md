@@ -80,8 +80,11 @@ Subpath exports are available for lower-level imports:
 ```ts
 import { createPaymentIntent } from "zkpay-sh/core";
 import { ZkpayClient } from "zkpay-sh/sdk";
-import { createZkpayApi } from "zkpay-sh/api";
+import { createHttpWebhookDispatcher, createZkpayApi } from "zkpay-sh/api";
 ```
+
+`createHttpWebhookDispatcher` can be attached to the API for opt-in webhook
+delivery after successful verification.
 
 The package also exposes the CLI:
 

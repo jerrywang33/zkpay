@@ -120,6 +120,20 @@ const app = createZkpayApi({
   }
 }</code></pre>
 <p>The API still does not push HTTP callbacks to merchant endpoints. It returns the signed event so merchant systems can forward, store, or verify it inside their own fulfillment pipeline.</p>
+<p>To enable opt-in delivery from the API, attach a dispatcher:</p>
+<pre><code class="language-ts">import { createHttpWebhookDispatcher, createZkpayApi } from &quot;zkpay-sh/api&quot;;
+
+const app = createZkpayApi({
+  webhookSecret: process.env.ZKPAY_WEBHOOK_SECRET,
+  webhookDispatcher: createHttpWebhookDispatcher({
+    targets: [
+      {
+        url: &quot;https://merchant.example/webhooks/zkpay&quot;,
+      },
+    ],
+  }),
+});</code></pre>
+<p>The dispatcher posts the canonical event JSON and sets <code>zkpay-signature: t=...,v1=...</code>. Verification responses include <code>webhookDelivery</code> results so merchant systems can observe whether delivery was accepted.</p>
 </section><section><h2>CLI</h2>
 <pre><code class="language-bash">ZKPAY_WEBHOOK_SECRET=webhook_secret zkpay webhook sign \
   --intent &#039;&lt;json-or-checkout-url&gt;&#039; \

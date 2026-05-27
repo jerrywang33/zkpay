@@ -127,6 +127,28 @@ The API still does not push HTTP callbacks to merchant endpoints. It returns the
 signed event so merchant systems can forward, store, or verify it inside their
 own fulfillment pipeline.
 
+To enable opt-in delivery from the API, attach a dispatcher:
+
+```ts
+import { createHttpWebhookDispatcher, createZkpayApi } from "zkpay-sh/api";
+
+const app = createZkpayApi({
+  webhookSecret: process.env.ZKPAY_WEBHOOK_SECRET,
+  webhookDispatcher: createHttpWebhookDispatcher({
+    targets: [
+      {
+        url: "https://merchant.example/webhooks/zkpay",
+      },
+    ],
+  }),
+});
+```
+
+The dispatcher posts the canonical event JSON and sets
+`zkpay-signature: t=...,v1=...`. Verification responses include
+`webhookDelivery` results so merchant systems can observe whether delivery was
+accepted.
+
 ## CLI
 
 ```bash

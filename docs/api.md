@@ -198,6 +198,45 @@ responses include a signed webhook event. Merchant backends can forward the
 event internally or store it for reconciliation, then verify the
 `signatureHeader` with the same secret before fulfillment.
 
+Webhook delivery is opt-in through `webhookDispatcher`. The helper below posts
+the signed event body with a `zkpay-signature` header and records delivery
+results in the verification response:
+
+```ts
+import { createHttpWebhookDispatcher, createZkpayApi } from "zkpay-sh/api";
+
+const app = createZkpayApi({
+  webhookSecret: process.env.ZKPAY_WEBHOOK_SECRET,
+  webhookDispatcher: createHttpWebhookDispatcher({
+    targets: [
+      {
+        url: "https://merchant.example/webhooks/zkpay",
+      },
+    ],
+    retry: {
+      attempts: 3,
+      delayMs: 250,
+    },
+  }),
+});
+```
+
+Delivery result:
+
+```json
+{
+  "webhookDelivery": [
+    {
+      "ok": true,
+      "url": "https://merchant.example/webhooks/zkpay",
+      "status": 202,
+      "attemptCount": 1,
+      "completedAt": "2026-05-25T01:02:00.000Z"
+    }
+  ]
+}
+```
+
 ## Replay Guard
 
 `createZkpayApi()` enables an in-process Sui replay store by default. After a

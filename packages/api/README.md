@@ -28,6 +28,23 @@ responses include a signed `payment.succeeded` webhook event and signature
 header. Merchant systems can verify that event before fulfillment or ledger
 updates.
 
+Webhook delivery is opt-in through a dispatcher:
+
+```ts
+import { createHttpWebhookDispatcher, createZkpayApi } from "zkpay-sh/api";
+
+const app = createZkpayApi({
+  webhookSecret: process.env.ZKPAY_WEBHOOK_SECRET,
+  webhookDispatcher: createHttpWebhookDispatcher({
+    targets: [
+      {
+        url: "https://merchant.example/webhooks/zkpay",
+      },
+    ],
+  }),
+});
+```
+
 `POST /payments` also accepts `options.checkout` so merchant backends can
 generate hosted checkout URLs with `network`, `coinType`, `decimals`, and
 `bindingPackageId` already attached.

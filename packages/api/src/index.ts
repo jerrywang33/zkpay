@@ -251,11 +251,77 @@ export interface ZkpayApiOptions extends ZkpayClientOptions {
   suiVerifier?: SuiVerifier;
   replayStore?: SuiReplayStore | false;
   requireIntentSignature?: boolean;
+  webhookDispatcher?: WebhookDispatcher;
 }
 
 export interface SignedWebhookEvent {
   event: WebhookEvent;
   signatureHeader: string;
+}
+
+export interface WebhookDeliveryResult {
+  ok: boolean;
+  url?: string;
+  status?: number;
+  attemptCount: number;
+  error?: string;
+  completedAt: string;
+}
+
+export interface WebhookDispatcher {
+  dispatch(
+    webhook: SignedWebhookEvent,
+  ): Promise<WebhookDeliveryResult[]> | WebhookDeliveryResult[];
+}
+
+export interface HttpWebhookTarget {
+  url: string;
+  headers?: Record<string, string>;
+}
+
+export interface WebhookRetryOptions {
+  attempts?: number;
+  delayMs?: number;
+  backoffFactor?: number;
+}
+
+export interface HttpWebhookDispatcherOptions {
+  targets: readonly HttpWebhookTarget[];
+  retry?: WebhookRetryOptions;
+  fetch?: typeof globalThis.fetch;
+}
+
+export function createHttpWebhookDispatcher(
+  options: HttpWebhookDispatcherOptions,
+): WebhookDispatcher {
+  const targets = options.targets.map((target) => ({
+    ...target,
+    url: target.url.trim(),
+  }));
+
+  if (targets.length === 0) {
+    throw new Error("At least one webhook target is required");
+  }
+
+  for (const target of targets) {
+    if (!target.url) throw new Error("Webhook target URL is required");
+  }
+
+  const fetchFn = options.fetch ?? globalThis.fetch;
+
+  if (!fetchFn) {
+    throw new Error("fetch is required for HTTP webhook delivery");
+  }
+
+  return {
+    async dispatch(webhook) {
+      return Promise.all(
+        targets.map((target) =>
+          deliverHttpWebhook(webhook, target, fetchFn, options.retry),
+        ),
+      );
+    },
+  };
 }
 
 export function createZkpayApi(options: ZkpayApiOptions = {}): Hono {
@@ -327,18 +393,18 @@ export function createZkpayApi(options: ZkpayApiOptions = {}): Hono {
       payload.data.receipt,
       payload.data.options,
     );
-    const webhook = result.ok
-      ? createSignedWebhookEvent(
+    const webhookResponse = result.ok
+      ? await createWebhookResponse(
           client,
           options,
           payload.data.intent,
           payload.data.receipt,
           "payments.verify",
         )
-      : undefined;
+      : {};
 
     return context.json(
-      webhook ? { ...result, webhook } : result,
+      { ...result, ...webhookResponse },
       result.ok ? 200 : 422,
     );
   });
@@ -424,7 +490,7 @@ export function createZkpayApi(options: ZkpayApiOptions = {}): Hono {
         );
       }
 
-      const webhook = createSignedWebhookEvent(
+      const webhookResponse = await createWebhookResponse(
         client,
         options,
         payload.data.intent,
@@ -434,7 +500,7 @@ export function createZkpayApi(options: ZkpayApiOptions = {}): Hono {
       const responseBody = {
         ...result,
         replay,
-        ...(webhook ? { webhook } : {}),
+        ...webhookResponse,
       };
 
       return context.json(
@@ -443,24 +509,127 @@ export function createZkpayApi(options: ZkpayApiOptions = {}): Hono {
       );
     }
 
-    const webhook =
+    const webhookResponse =
       result.ok && result.receipt
-        ? createSignedWebhookEvent(
+        ? await createWebhookResponse(
             client,
             options,
             payload.data.intent,
             result.receipt,
             "payments.verify.sui",
           )
-        : undefined;
+        : {};
 
     return context.json(
-      webhook ? { ...result, webhook } : result,
+      { ...result, ...webhookResponse },
       result.ok ? 200 : 422,
     );
   });
 
   return app;
+}
+
+async function deliverHttpWebhook(
+  webhook: SignedWebhookEvent,
+  target: HttpWebhookTarget,
+  fetchFn: typeof globalThis.fetch,
+  retry: WebhookRetryOptions = {},
+): Promise<WebhookDeliveryResult> {
+  const attempts = Math.max(1, retry.attempts ?? 3);
+  const delayMs = Math.max(0, retry.delayMs ?? 250);
+  const backoffFactor = Math.max(1, retry.backoffFactor ?? 2);
+  let status: number | undefined;
+  let error: string | undefined;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      const response = await fetchFn(target.url, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "zkpay-signature": webhook.signatureHeader,
+          ...target.headers,
+        },
+        body: JSON.stringify(webhook.event),
+      });
+
+      status = response.status;
+
+      if (response.ok) {
+        return {
+          ok: true,
+          url: target.url,
+          status,
+          attemptCount: attempt,
+          completedAt: new Date().toISOString(),
+        };
+      }
+
+      error = `HTTP ${response.status}`;
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : String(caught);
+    }
+
+    if (attempt < attempts && delayMs > 0) {
+      await sleep(delayMs * Math.pow(backoffFactor, attempt - 1));
+    }
+  }
+
+  return {
+    ok: false,
+    url: target.url,
+    status,
+    attemptCount: attempts,
+    error,
+    completedAt: new Date().toISOString(),
+  };
+}
+
+async function createWebhookResponse(
+  client: ZkpayClient,
+  options: ZkpayApiOptions,
+  intent: PaymentIntent,
+  receipt: PaymentReceipt,
+  source: string,
+): Promise<
+  | {
+      webhook: SignedWebhookEvent;
+      webhookDelivery?: WebhookDeliveryResult[];
+    }
+  | Record<string, never>
+> {
+  const webhook = createSignedWebhookEvent(
+    client,
+    options,
+    intent,
+    receipt,
+    source,
+  );
+
+  if (!webhook) return {};
+
+  if (!options.webhookDispatcher) {
+    return { webhook };
+  }
+
+  try {
+    return {
+      webhook,
+      webhookDelivery: await options.webhookDispatcher.dispatch(webhook),
+    };
+  } catch (error) {
+    return {
+      webhook,
+      webhookDelivery: [
+        {
+          ok: false,
+          attemptCount: 0,
+          error: error instanceof Error ? error.message : String(error),
+          completedAt: new Date().toISOString(),
+        },
+      ],
+    };
+  }
 }
 
 function createSignedWebhookEvent(
@@ -488,6 +657,12 @@ function createSignedWebhookEvent(
     event,
     signatureHeader: client.signWebhookEvent(event, secret),
   };
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }
 
 function createReplayRecord(receipt: PaymentReceipt): SuiReplayRecord {

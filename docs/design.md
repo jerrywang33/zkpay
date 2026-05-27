@@ -556,6 +556,7 @@ the current static marketing page.
 - CLI receipt verification for demos and scripts;
 - signed payment intents and signed webhook event primitives;
 - local webhook signing and verification for scripts;
+- opt-in HTTP webhook dispatcher for merchant callbacks;
 - merchant-side digest replay storage still required.
 
 ### v0.3: zkLogin Checkout
